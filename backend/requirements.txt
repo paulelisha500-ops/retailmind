@@ -1,0 +1,41 @@
+# --- Web framework ---
+fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.12
+
+# --- Database (PostgreSQL) ---
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
+alembic>=1.14
+
+# --- Validation / settings ---
+pydantic>=2.9
+pydantic-settings>=2.6
+email-validator>=2.2
+
+# --- Auth ---
+python-jose[cryptography]>=3.3
+passlib[bcrypt]>=1.7
+# passlib 1.7.4's bcrypt backend probes `bcrypt.__about__`, which bcrypt
+# dropped in 4.1 — pin below that so password hashing doesn't crash.
+bcrypt<4.1
+
+# --- Forecasting ---
+pandas>=2.2
+numpy>=1.26
+prophet>=1.1
+# xgboost>=2.1's Linux wheel unconditionally pulls in nvidia-nccl-cu12 (a
+# ~340MB CUDA package) even for CPU-only use — pin below that to avoid it.
+xgboost>=2.0,<2.1
+# xgboost.XGBRegressor (the sklearn-compatible API forecast_xgboost.py uses)
+# requires scikit-learn at runtime even though pip doesn't declare it as a
+# hard dependency.
+scikit-learn>=1.5
+
+# --- Deep learning (LSTM / TFT-style forecasting) ---
+# CPU-only build via the dedicated index — the default PyPI wheel bundles
+# CUDA binaries and is enormously larger than needed for CPU inference.
+torch>=2.4
+
+# --- Cache / live layer ---
+redis>=5.1

@@ -1,0 +1,61 @@
+services:
+  # Isolated PostgreSQL Database Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: retailmind_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: retailmind
+      POSTGRES_PASSWORD: retailmind_password
+      POSTGRES_DB: retailmind
+    ports:
+      # Exposes port 5433 to the Windows host to prevent local Postgres conflicts
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retailmind -d retailmind"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Isolated Redis Cache Service
+  redis:
+    image: redis:7-alpine
+    container_name: retailmind_redis
+    restart: always
+    ports:
+      # Exposes port 6380 to the Windows host to prevent local Redis conflicts
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+  # FastAPI Backend Service Container
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile
+    container_name: retailmind_backend
+    restart: always
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=postgresql://retailmind:retailmind_password@postgres:5432/retailmind
+      - REDIS_URL=redis://redis:6379/0
+      - "JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env - generate one with openssl rand -hex 32}"
+      - PYTHONPATH=/app
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    # Removed --reload flag to resolve 'Cannot allocate memory' Rust loop issues
+    command: >
+      sh -c "python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+# Local persistent storage volumes
+volumes:
+  postgres_data:
+  redis_data:

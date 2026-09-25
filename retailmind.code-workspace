@@ -1,0 +1,12 @@
+{
+  "folders": [
+    { "name": "backend (FastAPI)", "path": "backend" },
+    { "name": "frontend (React + Vite)", "path": "frontend" }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/node_modules": true
+    }
+  }
+}
