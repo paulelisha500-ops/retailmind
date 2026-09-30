@@ -5,8 +5,12 @@ Entry point. Run locally with:
 
 which serves interactive docs at http://localhost:8000/docs
 """
+import os
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
@@ -63,3 +67,12 @@ def on_startup():
 @app.get("/health", tags=["health"])
 def health():
     return {"status": "ok", "environment": settings.environment}
+
+
+# Single-origin deployment (the Hugging Face Space): when FRONTEND_DIST points at
+# a built frontend, serve it from this same process so the UI and the API share
+# one origin and one port. Mounted last, so every API route above wins. Unset
+# (local dev / docker-compose) -> nothing is mounted and behaviour is unchanged.
+_frontend_dist = os.environ.get("FRONTEND_DIST")
+if _frontend_dist and Path(_frontend_dist).is_dir():
+    app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")

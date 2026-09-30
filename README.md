@@ -1,10 +1,19 @@
 # RetailMind AI
 
-**Source:** [GitHub](https://github.com/paulelisha500-ops/retailmind) · [Hugging Face](https://huggingface.co/Elisha622/retailmind)
+**Live demo:** [Hugging Face Space](https://huggingface.co/spaces/Elisha622/retailmind) · **Source:** [GitHub](https://github.com/paulelisha500-ops/retailmind) · [Hugging Face code mirror](https://huggingface.co/Elisha622/retailmind)
 
 One project, two halves — now actually connected. Open `retailmind.code-workspace`
 in VS Code (File → Open Workspace from File...) to see both folders in one
 window instead of opening them separately.
+
+## Live demo (Hugging Face Space)
+
+The whole stack — PostgreSQL, the FastAPI API and the built React console — runs in
+one container on a Hugging Face Space, so nothing has to run on your own machine:
+<https://huggingface.co/spaces/Elisha622/retailmind> (same demo logins as below).
+It's the free tier, so data is ephemeral: a restart re-seeds the demo data, and an
+idle Space sleeps until someone opens it. Redeploy from this checkout with
+`python space/deploy.py --wait` (the Dockerfile and boot script live in `space/`).
 
 ## Quick start (Docker — recommended)
 

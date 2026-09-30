@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8002";
+// `??`, not `||`: an explicitly empty VITE_API_URL means "same origin" (the single-container
+// Hugging Face build sets it that way). Unset — local dev — still falls back to the local API.
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8002";
 
 export const UNAUTHORIZED_EVENT = "rm:unauthorized";
 
