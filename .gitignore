@@ -8,3 +8,10 @@ dist/
 venv/
 *.pyc
 .DS_Store
+
+# test & profiling output
+frontend/test-results/
+frontend/playwright-report/
+frontend/.prof/
+frontend/.tmp-*
+frontend/coverage/
