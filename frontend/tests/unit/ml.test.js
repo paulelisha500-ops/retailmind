@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import * as ad from "../../src/engine/ml/autodiff.js";
 import { fingerprint, liveMape, runModel } from "../../src/engine/ml/index.js";
-import { F, ForecastUnavailable, LOOKBACK, attentionForward, attentionParams, lstmForward, lstmParams, stepTensors } from "../../src/engine/ml/nn.js";
+import { F, ForecastUnavailable, LOOKBACK, attentionForward, attentionParams, lstmForward, lstmParams } from "../../src/engine/ml/nn.js";
 import { DAY, createRng } from "../../src/engine/util.js";
 import { boot } from "./helpers.js";
 
@@ -95,11 +95,10 @@ describe("autodiff: every op's gradient matches finite differences", () => {
 
 // ---- the forecasters -----------------------------------------------------------------------
 
-let t, history, sales;
+let t, history;
 beforeAll(async () => {
   t = await boot();
   const rows = t.db.where("sales_records", (s) => s.store_id === t.hq.id && s.category === "Dairy & Chilled").sort((a, b) => a.date - b.date);
-  sales = rows;
   history = rows.map((s) => ({ date: s.date, units: s.units_sold, promo: s.promo_flag ? 1 : 0, temp: s.temperature_c, holiday: 0, event: s.local_event_flag ? 1 : 0 }));
 });
 

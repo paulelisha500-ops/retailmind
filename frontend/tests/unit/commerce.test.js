@@ -1,12 +1,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { boot } from "./helpers.js";
 
-let t, layla, cashier, admin;
+let t, layla, cashier;
 beforeAll(async () => {
   t = await boot();
   layla = await t.as("customer");
   cashier = await t.as("staff");
-  admin = await t.as("admin");
 });
 
 const hqStock = (sku) => t.db.all("batches").filter((b) => b.store_id === t.hq.id && b.product_id === t.bySku(sku).id && b.status === "active").reduce((s, b) => s + b.quantity, 0);

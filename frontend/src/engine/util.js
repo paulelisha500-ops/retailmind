@@ -97,7 +97,7 @@ export function parseCsv(text) {
   let row = [];
   let field = "";
   let inQuotes = false;
-  const s = text.replace(/^﻿/, "");
+  const s = text.replace(/^\uFEFF/, "");
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
     if (inQuotes) {

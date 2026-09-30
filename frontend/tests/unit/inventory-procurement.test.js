@@ -103,7 +103,7 @@ describe("stock views", () => {
     const produce = res.body.find((r) => r.location === "Aisle 02");
     const lots = t.db.all("batches").filter((b) => b.store_id === t.hq.id && b.status === "active" && b.aisle_location.startsWith("Aisle 02"));
     const onHand = lots.reduce((s, b) => s + b.quantity, 0);
-    const capacity = lots.reduce((s, b) => s + t.db.get("products", b.product_id).reorder_threshold * 15, 0); // "full shelf" = 15× the reorder point
+    const capacity = lots.reduce((s, b) => s + t.db.get("products", b.product_id).reorder_threshold * 6, 0); // "full shelf" = 6× the reorder point
     expect(produce).toMatchObject({ category: "Produce", pct: Math.round(Math.min(100, (onHand / capacity) * 100)) });
   });
 

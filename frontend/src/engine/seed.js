@@ -128,12 +128,15 @@ export async function seedWorkspace(db, now = Date.now()) {
   const bySku = Object.fromEntries(products.map((p) => [p.sku, p]));
 
   // ---- stock: one received lot per product per store (FEFO unit) -------------------------
+  // On-hand is set relative to each product's own reorder point (0.3× to 6×), so most shelves look
+  // healthy and a realistic handful sit below their reorder point. Smaller formats stock a little less.
+  const stockScale = (size) => 0.5 + 0.5 * size;
   for (const store of stores) {
-    const size = sizeOf[store.id];
+    const scale = stockScale(sizeOf[store.id]);
     products.forEach((p, i) => {
       db.insert("batches", {
         product_id: p.id, store_id: store.id, lot_number: `LOT-${1000 + i}${store === hq ? "" : `-${store.code.slice(1)}`}`,
-        quantity: Math.max(6, Math.round(rng.int(10, 300) * size)), aisle_location: aisles[p.sku],
+        quantity: Math.max(4, Math.round(p.reorder_threshold * rng.uniform(0.3, 6) * scale)), aisle_location: aisles[p.sku],
         received_at: at(-rng.int(1, 6)), expires_at: at(rng.int(1, 20)), status: "active",
       });
     });
@@ -206,15 +209,15 @@ export async function seedWorkspace(db, now = Date.now()) {
 
   // ---- warehouse zones (utilisation is computed live from stock, never stored) -----------
   const zoneDefs = [
-    ["Zone A · Dry Goods & Produce", ["Bakery", "Produce"], 1100],
-    ["Zone B · Cold Storage", ["Dairy & Chilled", "Meat & Seafood"], 1100],
-    ["Zone C · Frozen", ["Frozen"], 550],
+    ["Zone A · Dry Goods & Produce", ["Bakery", "Produce"], 1400],
+    ["Zone B · Cold Storage", ["Dairy & Chilled", "Meat & Seafood"], 1400],
+    ["Zone C · Frozen", ["Frozen"], 320],
     ["Zone D · Receiving & Staging", [], 500],
   ];
   for (const store of stores) {
     zoneDefs.forEach(([name, categories, capacity], i) => {
       db.insert("warehouse_zones", {
-        store_id: store.id, name, categories, capacity_units: Math.round(capacity * sizeOf[store.id]), sort_order: i + 1,
+        store_id: store.id, name, categories, capacity_units: Math.round(capacity * stockScale(sizeOf[store.id])), sort_order: i + 1,
       });
     });
   }

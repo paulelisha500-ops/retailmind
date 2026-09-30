@@ -1,25 +1,35 @@
 {
-  "name": "retailmind-frontend",
+  "name": "retailmind",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "vite --mode server",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --port 4173",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "census": "node scripts/interactive-census.mjs",
+    "lint": "eslint src tests scripts"
   },
   "dependencies": {
     "lucide-react": "^0.383.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "recharts": "^2.12.7"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@babel/parser": "^7.29.9",
     "@babel/traverse": "^8.0.6",
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.63.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
     "vite": "^7.3.6",
     "vitest": "^5.0.3"
-  }
+  },
+  "description": "Retail operations platform — forecasting, procurement, shelf alerts, register and customer app."
 }

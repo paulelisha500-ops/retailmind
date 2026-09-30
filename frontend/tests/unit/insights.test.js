@@ -87,7 +87,9 @@ describe("warehouse", () => {
     const frozen = zones[2];
     const onHand = t.db.all("batches").filter((b) => b.store_id === t.hq.id && b.status === "active" && t.db.get("products", b.product_id).category === "Frozen").reduce((s, b) => s + b.quantity, 0);
     expect(frozen.current_units).toBe(onHand);
-    expect(frozen.pct).toBeCloseTo(Math.min(100, (onHand / 550) * 100), 1);
+    const capacity = t.db.all("warehouse_zones").find((z) => z.store_id === t.hq.id && z.name.includes("Frozen")).capacity_units;
+    expect(frozen.capacity_units).toBe(capacity);
+    expect(frozen.pct).toBeCloseTo(Math.min(100, (onHand / capacity) * 100), 1);
     expect(zones[3].current_units).toBe(340); // PO-1042 is inbound
   });
 

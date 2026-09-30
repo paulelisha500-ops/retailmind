@@ -1,13 +1,20 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Relative asset paths: the same build works from a domain root (Hugging Face Space) and from a
+  // sub-path (GitHub Pages project site) with no rebuild.
+  base: "./",
   plugins: [react()],
+  worker: { format: "es" },
+  build: {
+    target: "es2022",
+    chunkSizeWarningLimit: 300,
+    rollupOptions: { output: { manualChunks: { react: ["react", "react-dom"] } } },
+  },
   server: {
     port: 3002,
-    // .trycloudflare.com: the quick-tunnel used to expose this dev server
-    // publicly gets a new random subdomain each time it's (re)started, so
-    // this allows the whole suffix rather than one fixed hostname.
+    // .trycloudflare.com: a quick tunnel gets a new random subdomain each time it restarts.
     allowedHosts: [".trycloudflare.com"],
   },
 });

@@ -181,7 +181,7 @@ export function register(r) {
       const aisle = (b.aisle_location || "Unassigned").split("·")[0].trim();
       const entry = byAisle.get(aisle) ?? { current: 0, capacity: 0, category: product.category };
       entry.current += b.quantity;
-      entry.capacity += product.reorder_threshold * 15; // "full shelf" reference: 15× the reorder point
+      entry.capacity += product.reorder_threshold * 6; // "full shelf" reference: 6× the reorder point
       byAisle.set(aisle, entry);
     }
     return [...byAisle.entries()]
