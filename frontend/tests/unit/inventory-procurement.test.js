@@ -43,6 +43,7 @@ describe("products", () => {
     expect(cleared.body).toMatchObject({ cost_price: null, supplier_id: null, name: "Extra Virgin Olive Oil" }); // null name is ignored
     expect((await t.call("PATCH", `/inventory/products/${id}`, { token: manager, body: { price: -1 } })).status).toBe(422);
     expect((await t.call("PATCH", "/inventory/products/nope", { token: manager, body: { name: "x" } })).status).toBe(404);
+    expect((await t.call("PATCH", `/inventory/products/${id}`, { token: manager, body: { supplier_id: "ghost" } })).body).toEqual({ detail: "Supplier not found" });
   });
 
   it("refuses to delete a product that stock or orders reference, and deletes a clean one", async () => {
@@ -51,6 +52,13 @@ describe("products", () => {
     const id = t.db.all("products").find((p) => p.sku === "SKU-9001").id;
     expect((await t.call("DELETE", `/inventory/products/${id}`, { token: manager })).status).toBe(204);
     expect((await t.call("DELETE", `/inventory/products/${id}`, { token: manager })).status).toBe(404);
+  });
+
+  it("will not delete a product that is on a shopping list either", async () => {
+    const created = await t.call("POST", "/inventory/products", { token: manager, body: product({ sku: "SKU-9101" }) });
+    const customer = await t.as("customer");
+    await t.call("POST", "/customer/shopping-list", { token: customer, body: { product_id: created.body.id } });
+    expect((await t.call("DELETE", `/inventory/products/${created.body.id}`, { token: manager })).status).toBe(409);
   });
 });
 
@@ -83,6 +91,51 @@ describe("CSV product import", () => {
     expect(bagel).toMatchObject({ name: "Sesame Bagels, 6 pack", price: 11.5, cost_price: 6.2, reorder_threshold: 40, allergens: ["gluten", "sesame"], dietary_tags: ["Vegan"], nutrition: { kcal: 250 }, barcode: "8900000007001" });
     expect(bagel.supplier_id).toBe(t.byName("suppliers", "Golden Wheat Bakers").id);
     expect(t.bySku("SKU-1001").price).toBe(9.25);
+  });
+
+  it("skips a row whose barcode belongs to another product, not the whole import", async () => {
+    const csv = [
+      header,
+      "SKU-7101,Rye Loaf,Bakery,12,7,20,,,,,8900000007101", // row 2: created
+      "SKU-7102,Seeded Loaf,Bakery,13,8,20,,,,,8900000007101", // row 3: the code of the row above
+      "SKU-7103,Spelt Loaf,Bakery,14,9,20,,,,,8901000001025", // row 4: Greek Yogurt's code
+      "SKU-7101,Rye Loaf,Bakery,12.5,7,20,,,,,8900000007101", // row 5: a product keeps its own code
+      "SKU-7104,Oat Loaf,Bakery,11,6,20,,,,,8900000007104", // row 6: created
+      "SKU-7104,Oat Loaf,Bakery,11,6,20,,,,,8901000001025", // row 7: an existing product cannot take another one's code
+    ].join("\n");
+    const res = await t.call("POST", "/inventory/products/import", { token: manager, file: csvFile("p.csv", csv) });
+    expect(res.body).toMatchObject({ created: 2, updated: 1 });
+    expect(res.body.errors).toEqual([
+      "Row 3: barcode 8900000007101 is already assigned to another product, skipped",
+      "Row 4: barcode 8901000001025 is already assigned to another product, skipped",
+      "Row 7: barcode 8901000001025 is already assigned to another product, skipped",
+    ]);
+    expect(t.bySku("SKU-7101")).toMatchObject({ price: 12.5, barcode: "8900000007101" });
+    expect(t.bySku("SKU-7104").barcode).toBe("8900000007104");
+    expect(t.db.all("products").filter((p) => ["SKU-7102", "SKU-7103"].includes(p.sku))).toHaveLength(0);
+  });
+
+  it("leaves the columns a short re-import does not have alone", async () => {
+    const send = (name, text) => t.call("POST", "/inventory/products/import", { token: manager, file: csvFile(name, text) });
+    await send("full.csv", `${header}\nSKU-7201,Date Loaf,Bakery,9,5,30,golden wheat bakers,gluten,Vegan,210,8900000007201`);
+    const before = structuredClone(t.bySku("SKU-7201"));
+    expect(before).toMatchObject({ cost_price: 5, reorder_threshold: 30, allergens: ["gluten"], nutrition: { kcal: 210 } });
+    expect(before.supplier_id).toBeTruthy();
+
+    const res = await send("short.csv", "sku,name,category,price\nSKU-7201,Date Loaf,Bakery,9.5");
+    expect(res.body).toEqual({ created: 0, updated: 1, errors: [] });
+    expect(t.bySku("SKU-7201")).toEqual({ ...before, price: 9.5 });
+  });
+
+  it("clears a field when its column is in the file and the cell is blank", async () => {
+    const send = (name, text) => t.call("POST", "/inventory/products/import", { token: manager, file: csvFile(name, text) });
+    await send("full.csv", "sku,name,category,price,cost_price,supplier_name,allergens,kcal,carbs_g,barcode\nSKU-7202,Fig Loaf,Bakery,9,5,golden wheat bakers,gluten,210,40,8900000007202");
+    expect(t.bySku("SKU-7202")).toMatchObject({ cost_price: 5, allergens: ["gluten"], nutrition: { kcal: 210, carbs_g: 40 } });
+
+    const res = await send("clear.csv", "sku,name,category,price,cost_price,supplier_name,kcal,allergens\nSKU-7202,Fig Loaf,Bakery,9,,,,");
+    expect(res.body.updated).toBe(1);
+    expect(t.bySku("SKU-7202")).toMatchObject({ cost_price: null, supplier_id: null, allergens: [], nutrition: { carbs_g: 40 }, barcode: "8900000007202" });
+    expect(t.bySku("SKU-7202").nutrition.kcal).toBeUndefined(); // the kcal column was in the file, carbs_g was not
   });
 
   it("rejects non-CSV files, empty files and missing columns", async () => {
@@ -173,6 +226,24 @@ describe("suppliers", () => {
     ]);
     expect(t.db.all("suppliers").find((s) => s.name === "Polar Cold Logistics").performance_score).toBe(99);
     expect((await t.call("POST", "/procurement/suppliers/import", { token: procurement, file: csvFile("v.csv", "name\nA") })).body.detail).toBe("CSV is missing required column(s): category");
+  });
+
+  it("matches a name repeated in one file to the supplier the file just created", async () => {
+    const csv = "name,category,performance_score\nHarbour Fresh,Produce,70\nharbour fresh,Produce,75";
+    const res = await t.call("POST", "/procurement/suppliers/import", { token: procurement, file: csvFile("dup.csv", csv) });
+    expect(res.body).toMatchObject({ created: 1, updated: 1, errors: [] });
+    expect(t.db.all("suppliers").filter((s) => s.name.toLowerCase() === "harbour fresh")).toHaveLength(1);
+  });
+
+  it("leaves the columns a short re-import does not have alone", async () => {
+    const send = (text) => t.call("POST", "/procurement/suppliers/import", { token: procurement, file: csvFile("v.csv", text) });
+    await send("name,category,trn,onboarding_status,performance_score,on_time_pct\nKeep Foods,Dairy,100777,approved,91,97.5");
+    const before = structuredClone(t.byName("suppliers", "Keep Foods"));
+    expect(before).toMatchObject({ trn: "100777", onboarding_status: "approved", performance_score: 91, on_time_pct: 97.5 });
+    expect((await send("name,category\nKeep Foods,Frozen")).body).toEqual({ created: 0, updated: 1, errors: [] });
+    expect(t.byName("suppliers", "Keep Foods")).toEqual({ ...before, category: "Frozen" });
+    await send("name,category,trn\nKeep Foods,Frozen,"); // a blank cell in a column that is present clears it
+    expect(t.byName("suppliers", "Keep Foods")).toMatchObject({ trn: null, onboarding_status: "approved", performance_score: 91 });
   });
 });
 

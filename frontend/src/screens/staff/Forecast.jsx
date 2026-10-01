@@ -63,8 +63,7 @@ export default function Forecast() {
         </div>
       )}
 
-      {unavailable && <Banner tone="warn">{info.label} needs more history for this store and category. {error.message}</Banner>}
-      {error && !unavailable && <Banner tone="error">{error.message}</Banner>}
+      {error && <Banner tone={unavailable ? "warn" : "error"}>{error.message}</Banner>}
 
       {data && chart && (
         <>

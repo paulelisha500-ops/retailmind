@@ -92,7 +92,8 @@ export function register(r) {
     return respond(204);
   });
 
-  // CSV import — the practical equivalent of a Google Sheets upload (File → Download → .csv).
+  // CSV import — the practical equivalent of a Google Sheets upload (File → Download → .csv). A column that is in
+  // the file sets that field (a blank cell clears it); a column that is not in the file leaves existing products alone.
   r.post("/inventory/products/import", async (ctx) => {
     await ctx.requireResponsibility("Inventory Monitoring");
     if (!ctx.file) throw new HttpError(422, [{ loc: ["body", "file"], msg: "Field required", type: "missing" }]);
@@ -106,6 +107,12 @@ export function register(r) {
     if (missing.length) throw new HttpError(422, `CSV is missing required column(s): ${missing.join(", ")}`);
 
     const suppliersByName = new Map(ctx.db.all("suppliers").map((s) => [s.name.trim().toLowerCase(), s]));
+    const bySku = new Map();
+    const byBarcode = new Map();
+    for (const p of ctx.db.all("products")) {
+      bySku.set(p.sku, p);
+      if (p.barcode) byBarcode.set(p.barcode, p);
+    }
     let created = 0;
     let updated = 0;
     const errors = [];
@@ -120,12 +127,11 @@ export function register(r) {
       if (!(Number.isFinite(price) && price > 0 && price <= 1_000_000)) { errors.push(`Row ${i}: price must be between 0 and 1,000,000, skipped`); return; }
       if (!row.name || !row.category) { errors.push(`Row ${i}: name and category are required, skipped`); return; }
 
-      const nutrition = {};
-      for (const col of NUTRITION_COLUMNS) {
-        if (row[col]) {
-          const n = pyFloat(row[col]);
-          if (!Number.isNaN(n)) nutrition[col] = n;
-        }
+      const existing = bySku.get(row.sku);
+      const nutrition = { ...(existing?.nutrition ?? {}) };
+      for (const col of NUTRITION_COLUMNS.filter((c) => present.has(c))) {
+        if (!row[col]) delete nutrition[col];
+        else if (!Number.isNaN(pyFloat(row[col]))) nutrition[col] = pyFloat(row[col]);
       }
 
       let costPrice = null;
@@ -138,20 +144,36 @@ export function register(r) {
         }
       }
 
+      const owner = row.barcode ? byBarcode.get(row.barcode) : null;
+      if (owner && owner.sku !== row.sku) {
+        errors.push(`Row ${i}: barcode ${row.barcode} is already assigned to another product, skipped`);
+        return;
+      }
+
       const supplier = row.supplier_name ? suppliersByName.get(row.supplier_name.toLowerCase()) : null;
       const split = (text) => (text ?? "").split(";").map((x) => x.trim()).filter(Boolean);
-      const fields = {
-        name: row.name, category: row.category, price, cost_price: costPrice, barcode: row.barcode || null,
-        unit: row.unit || "each", reorder_threshold: /^\d+$/.test(row.reorder_threshold ?? "") ? parseInt(row.reorder_threshold, 10) : 10,
-        supplier_id: supplier ? supplier.id : null, allergens: split(row.allergens), dietary_tags: split(row.dietary_tags), nutrition,
-      };
+      const reorder = /^\d+$/.test(row.reorder_threshold ?? "") ? parseInt(row.reorder_threshold, 10) : 10;
+      const fields = { name: row.name, category: row.category, price, nutrition };
+      if (present.has("cost_price")) fields.cost_price = costPrice;
+      if (present.has("barcode")) fields.barcode = row.barcode || null;
+      if (present.has("unit")) fields.unit = row.unit || "each";
+      if (present.has("reorder_threshold")) fields.reorder_threshold = reorder;
+      if (present.has("supplier_name")) fields.supplier_id = supplier ? supplier.id : null;
+      if (present.has("allergens")) fields.allergens = split(row.allergens);
+      if (present.has("dietary_tags")) fields.dietary_tags = split(row.dietary_tags);
 
-      const existing = ctx.db.all("products").find((p) => p.sku === row.sku);
       if (existing) {
+        if (existing.barcode && fields.barcode !== undefined) byBarcode.delete(existing.barcode);
         Object.assign(existing, fields);
+        if (existing.barcode) byBarcode.set(existing.barcode, existing);
         updated += 1;
       } else {
-        ctx.db.insert("products", { sku: row.sku, ...fields, created_at: ctx.now });
+        const product = ctx.db.insert("products", {
+          sku: row.sku, unit: "each", reorder_threshold: 10, cost_price: null, barcode: null, supplier_id: null,
+          allergens: [], dietary_tags: [], ...fields, created_at: ctx.now,
+        });
+        bySku.set(product.sku, product);
+        if (product.barcode) byBarcode.set(product.barcode, product);
         created += 1;
       }
     });

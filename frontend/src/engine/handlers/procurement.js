@@ -64,7 +64,8 @@ export function register(r) {
     return respond(201, out.supplier(supplier));
   });
 
-  // Vendor-onboarding intake sheet: licence and TRN alongside the usual commercial fields.
+  // Vendor-onboarding intake sheet: licence and TRN alongside the usual commercial fields. A column that is in the
+  // file sets that field; a column that is not in the file leaves existing suppliers alone.
   r.post("/procurement/suppliers/import", async (ctx) => {
     await ctx.requireResponsibility("Supplier Management");
     if (!ctx.file) throw new HttpError(422, [{ loc: ["body", "file"], msg: "Field required", type: "missing" }]);
@@ -110,11 +111,11 @@ export function register(r) {
 
       const existing = existingByName.get(name.toLowerCase());
       if (existing) {
-        Object.assign(existing, fields);
+        Object.assign(existing, Object.fromEntries(Object.entries(fields).filter(([key]) => key === "category" || present.has(key))));
         updated += 1;
       } else {
-        const row2 = ctx.db.insert("suppliers", { name, ...fields, contract_start: null, contract_end: null, created_at: ctx.now });
-        existingByName.set(name.toLowerCase(), row2);
+        const supplier = ctx.db.insert("suppliers", { name, ...fields, contract_start: null, contract_end: null, created_at: ctx.now });
+        existingByName.set(name.toLowerCase(), supplier);
         created += 1;
       }
     });
