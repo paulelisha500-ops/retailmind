@@ -1,6 +1,6 @@
 # The API and everything it needs to run on plain Python, without the heavy forecasting libraries. A forecasting
 # method whose library is missing answers 501; the rest of the API is unaffected.
-fastapi>=0.115
+fastapi>=0.141.1
 uvicorn[standard]>=0.32
 python-multipart>=0.0.12
 
