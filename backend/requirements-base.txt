@@ -20,5 +20,5 @@ passlib[bcrypt]>=1.7
 bcrypt<4.1
 
 # Sales history and the forecasting frames
-pandas>=2.2
+pandas>=3.0.6
 numpy>=1.26
