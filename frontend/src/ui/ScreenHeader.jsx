@@ -12,7 +12,13 @@ export function ScreenHeader({ title, subtitle, actions, back }) {
   useEffect(() => {
     const node = titleRef.current;
     if (!node || !("IntersectionObserver" in window)) return undefined;
-    const io = new IntersectionObserver(([entry]) => setCompact(!entry.isIntersecting && entry.boundingClientRect.top < 0), { rootMargin: "-46px 0px 0px 0px" });
+    // The observer reports only when the title crosses the line, and entries can arrive batched, so read the last.
+    // "Scrolled away" means the title's bottom edge is at or above the top of the visible area; a title that
+    // has no size yet (not laid out) must not count.
+    const io = new IntersectionObserver((entries) => {
+      const { isIntersecting, boundingClientRect: box, rootBounds } = entries[entries.length - 1];
+      setCompact(!isIntersecting && box.height > 0 && box.bottom <= (rootBounds?.top ?? 0) + 1);
+    }, { rootMargin: "-46px 0px 0px 0px" });
     io.observe(node);
     return () => io.disconnect();
   }, []);

@@ -1,11 +1,12 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { serviceWorkerPlugin } from "./scripts/sw-plugin.js";
 
 export default defineConfig({
   // Relative asset paths: the same build works from a domain root (Hugging Face Space) and from a
   // sub-path (GitHub Pages project site) with no rebuild.
   base: "./",
-  plugins: [react()],
+  plugins: [react(), serviceWorkerPlugin()],
   worker: { format: "es" },
   build: {
     target: "es2022",

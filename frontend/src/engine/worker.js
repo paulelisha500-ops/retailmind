@@ -6,6 +6,10 @@ const engine = () => (booting ??= createEngine());
 engine(); // start seeding / loading the workspace immediately, before the first request arrives
 
 self.onmessage = async ({ data }) => {
+  if (data.flush) { // the page is being hidden or closed: save now instead of waiting for the debounce
+    (await engine()).flush();
+    return;
+  }
   const { id, request } = data;
   try {
     const response = await (await engine()).handle(request);

@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:server": "vite --mode server",
     "build": "vite build",
+    "build:server": "vite build --mode server",
     "preview": "vite preview --port 4173",
     "test": "vitest run",
     "test:e2e": "playwright test",

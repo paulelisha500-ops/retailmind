@@ -98,6 +98,8 @@ export function XYChart({ categories, series, band, regionFrom, height = 190, yF
   const onKeyDown = (e) => {
     if (e.key === "ArrowRight") { e.preventDefault(); setActive((a) => Math.min(n - 1, (a ?? -1) + 1)); }
     else if (e.key === "ArrowLeft") { e.preventDefault(); setActive((a) => Math.max(0, (a ?? n) - 1)); }
+    else if (e.key === "Home") { e.preventDefault(); setActive(0); }
+    else if (e.key === "End") { e.preventDefault(); setActive(n - 1); }
     else if (e.key === "Escape") setActive(null);
   };
 

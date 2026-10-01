@@ -50,32 +50,42 @@ export async function clearState() {
 }
 
 /**
- * Debounced write-behind: snapshots the workspace shortly after it changes, and tells other
- * tabs so they can reload instead of overwriting each other.
+ * Write-behind: snapshots the workspace shortly after it changes (never on the request's own path —
+ * a snapshot is ~1.4 MB), and tells other tabs so they can reload instead of overwriting each other.
+ * Changes are coalesced for `delay` ms, but never held back longer than `maxWait`, and the page asks
+ * for an immediate save when it is hidden or closed. `savedRevision` is what storage already holds,
+ * so a write is skipped when there is nothing new to put.
  */
-export function attachPersistence(db, { onExternalChange, delay = 400 } = {}) {
+export function attachPersistence(db, { onExternalChange, delay = 150, maxWait = 1500, savedRevision = -1 } = {}) {
   if (!hasIdb()) return { flush: async () => {}, close() {} };
 
   const origin = Math.random().toString(36).slice(2);
   const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(CHANNEL) : null;
   let timer = null;
+  let dirtySince = 0;
   let writing = Promise.resolve();
 
   const flush = () => {
     clearTimeout(timer);
     timer = null;
+    dirtySince = 0;
     writing = writing.then(async () => {
+      const revision = db.meta.revision;
+      if (revision === savedRevision) return;
       try {
         await withStore("readwrite", (s) => s.put(db.snapshot(), KEY));
-        channel?.postMessage({ origin, revision: db.meta.revision });
+        savedRevision = revision;
+        channel?.postMessage({ origin, revision });
       } catch { /* quota / blocked: keep running from memory */ }
     });
     return writing;
   };
 
   const off = db.onChange(() => {
+    const now = Date.now();
+    dirtySince ||= now;
     clearTimeout(timer);
-    timer = setTimeout(flush, delay);
+    timer = setTimeout(flush, Math.max(0, Math.min(delay, dirtySince + maxWait - now)));
   });
 
   if (channel) {
@@ -84,6 +94,7 @@ export function attachPersistence(db, { onExternalChange, delay = 400 } = {}) {
       const state = await loadState();
       if (state && state.meta.revision > db.meta.revision) {
         db.load(state);
+        savedRevision = state.meta.revision;
         onExternalChange?.();
       }
     };
@@ -93,6 +104,7 @@ export function attachPersistence(db, { onExternalChange, delay = 400 } = {}) {
     flush,
     close() {
       off();
+      clearTimeout(timer);
       channel?.close();
     },
   };

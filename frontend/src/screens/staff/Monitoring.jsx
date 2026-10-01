@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../../api.js";
 import { fmtTime } from "../../lib/format.js";
 import { paths, useStoreQuery } from "../../lib/hooks.js";
-import { setQuery, useQuery } from "../../lib/query.js";
+import { optimistic, useQuery } from "../../lib/query.js";
 import { useSession } from "../../session.jsx";
 import { Button, Field, Input, Segmented } from "../../ui/controls.jsx";
 import { Banner, CardSkeleton, Empty, List, ListRow, Meter, Section, Tag } from "../../ui/display.jsx";
@@ -84,8 +84,7 @@ export default function Monitoring() {
   async function resolve(id) {
     setError("");
     try {
-      const updated = await apiFetch(`/alerts/${id}/resolve`, { method: "PATCH", token });
-      setQuery(paths.alerts(activeStoreId), (prev = []) => prev.map((a) => (a.id === id ? updated : a)));
+      await optimistic(paths.alerts(activeStoreId), (prev = []) => prev.map((a) => (a.id === id ? { ...a, status: "resolved" } : a)), () => apiFetch(`/alerts/${id}/resolve`, { method: "PATCH", token }));
       toast.show("Alert marked as reviewed");
     } catch (err) { setError(err.message); }
   }

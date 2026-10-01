@@ -44,7 +44,7 @@
 .field__label { font: 600 12.5px/1.2 var(--font); color: var(--label-2); padding-left: 2px; }
 .input {
   width: 100%; min-height: var(--control-h); padding: 0 14px; border: 0; border-radius: var(--r-s);
-  background: var(--fill); color: var(--label); font-size: 15px;
+  background: var(--fill); color: var(--label); font-size: 16px; /* 16px+ keeps iOS Safari from zooming the page when a field is focused */
   transition: box-shadow var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 select.input { appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%238a8f96' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; }
@@ -66,6 +66,7 @@ select.input { appearance: none; padding-right: 34px; background-image: url("dat
 .section { margin-top: 26px; }
 .section:first-child { margin-top: 0; }
 .section__title { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 8px; font: 600 12px/1.2 var(--font); letter-spacing: 0.04em; text-transform: uppercase; color: var(--label-2); }
+.section__title h2 { margin: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
 
 /* ---- inset grouped lists ---- */
 .list { background: var(--surface); border-radius: var(--r-l); box-shadow: var(--shadow-card); overflow: hidden; }
@@ -219,6 +220,8 @@ button.list-row:active, label.list-row:active { background: var(--fill); }
 .toast.is-leaving { animation: toast-out 220ms var(--ease) both; }
 .toast svg { flex: 0 0 auto; color: var(--green); }
 .toast--error svg { color: var(--red); }
+.toast__action { margin-left: 4px; padding: 4px 12px; border: 0; border-radius: 999px; background: var(--tint); color: #fff; font: 600 13px var(--font); }
+.toast__action:active { transform: scale(0.95); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-16px) scale(0.92); } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(-10px) scale(0.96); } }
 

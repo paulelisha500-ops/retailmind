@@ -3,7 +3,7 @@ import { useState } from "react";
 import { apiFetch } from "../../api.js";
 import { taskTone } from "../../lib/catalog.js";
 import { paths, useStoreQuery } from "../../lib/hooks.js";
-import { setQuery } from "../../lib/query.js";
+import { optimistic } from "../../lib/query.js";
 import { useSession } from "../../session.jsx";
 import { Check } from "../../ui/controls.jsx";
 import { Banner, CardSkeleton, Empty, List, ListRow, Section, Tag } from "../../ui/display.jsx";
@@ -19,8 +19,7 @@ export default function Tasks({ onNav }) {
   async function toggle(id) {
     setError("");
     try {
-      const updated = await apiFetch(`/tasks/${id}/toggle`, { method: "PATCH", token });
-      setQuery(paths.tasks(activeStoreId), (prev = []) => prev.map((t) => (t.id === id ? updated : t)));
+      await optimistic(paths.tasks(activeStoreId), (prev = []) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)), () => apiFetch(`/tasks/${id}/toggle`, { method: "PATCH", token }));
     } catch (err) { setError(err.message); }
   }
 

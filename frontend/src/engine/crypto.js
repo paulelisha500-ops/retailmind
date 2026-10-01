@@ -22,8 +22,8 @@ function timingSafeEqual(a, b) {
   return diff === 0;
 }
 
-export async function hashPassword(raw, iterations = PBKDF2_ITERATIONS) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
+/** A fresh random salt unless one is given (only the build-time seed-hash script passes its own). */
+export async function hashPassword(raw, iterations = PBKDF2_ITERATIONS, salt = crypto.getRandomValues(new Uint8Array(16))) {
   const hash = await pbkdf2(raw, salt, iterations);
   return { alg: "pbkdf2-sha256", iterations, salt: toB64(salt), hash: toB64(hash) };
 }

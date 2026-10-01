@@ -1,7 +1,7 @@
 // One entry point for every request the UI makes. Two editions share the same REST surface:
 //   • browser (default): answered by the in-page engine (src/engine) — no server, works on any static host
 //   • server: sent over the network to the FastAPI backend (VITE_BACKEND=server, VITE_API_URL=…)
-import { engineRequest, warmEngine } from "./engine/client.js";
+import { engineRequest, flushEngine, warmEngine } from "./engine/client.js";
 
 export const EDITION = import.meta.env.VITE_BACKEND === "server" ? "server" : "browser";
 
@@ -33,7 +33,12 @@ function formatDetail(detail) {
   return "Request failed";
 }
 
-if (EDITION === "browser") warmEngine(); // start loading the workspace before the first request needs it
+if (EDITION === "browser") {
+  warmEngine(); // start loading the workspace before the first request needs it
+  // Changes are saved a moment after they happen; make sure nothing is left waiting when the page goes away.
+  addEventListener("pagehide", flushEngine);
+  addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushEngine(); });
+}
 
 async function viaEngine(path, { method, token, body, formData }) {
   const url = new URL(path, "http://engine.local");

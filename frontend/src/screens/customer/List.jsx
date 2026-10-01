@@ -2,7 +2,7 @@ import { Receipt, ShoppingBasket, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { apiFetch } from "../../api.js";
 import { aed, plural } from "../../lib/format.js";
-import { invalidate, setQuery, useQuery } from "../../lib/query.js";
+import { invalidate, optimistic, useQuery } from "../../lib/query.js";
 import { useSession } from "../../session.jsx";
 import { Button, Check, IconButton, Stepper } from "../../ui/controls.jsx";
 import { Banner, CardSkeleton, Empty, List, ListRow } from "../../ui/display.jsx";
@@ -19,19 +19,18 @@ export default function CustomerList() {
   const [receipt, setReceipt] = useState(null);
   const [checkingOut, setCheckingOut] = useState(false);
 
-  const patch = (id, body) => apiFetch(`${LIST}/${id}`, { method: "PATCH", token, body });
-  const replace = (updated) => setQuery(LIST, (prev = []) => prev.map((i) => (i.id === updated.id ? updated : i)));
-
+  // Ticks, quantities and removals show up instantly and are rolled back only if the change is refused.
   async function change(item, body) {
     setError("");
-    try { replace(await patch(item.id, body)); } catch (err) { setError(err.message); }
+    try {
+      await optimistic(LIST, (prev = []) => prev.map((i) => (i.id === item.id ? { ...i, ...body } : i)), () => apiFetch(`${LIST}/${item.id}`, { method: "PATCH", token, body }));
+    } catch (err) { setError(err.message); }
   }
 
   async function remove(item) {
     setError("");
     try {
-      await apiFetch(`${LIST}/${item.id}`, { method: "DELETE", token });
-      setQuery(LIST, (prev = []) => prev.filter((i) => i.id !== item.id));
+      await optimistic(LIST, (prev = []) => prev.filter((i) => i.id !== item.id), () => apiFetch(`${LIST}/${item.id}`, { method: "DELETE", token }));
     } catch (err) { setError(err.message); }
   }
 

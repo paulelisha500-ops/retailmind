@@ -1,16 +1,17 @@
 // First-run workspace data: four stores, a staff roster, suppliers, a 15-SKU catalogue with
 // batch-level stock, 90 days of sales history, checkout traffic and order history. Deterministic
 // (seeded PRNG) so a fresh workspace is reproducible; dates are relative to first launch.
-import { SEED_PASSWORD } from "./accounts.js";
+import { SEED_PASSWORD_HASH } from "./accounts.js";
 import { CATEGORIES, HOURLY_WEIGHTS } from "./constants.js";
-import { hashPassword, randomSecret } from "./crypto.js";
+import { randomSecret } from "./crypto.js";
 import { emptyState } from "./store.js";
 import { DAY, HOUR, createRng, pyRound, pyWeekday, startOfUtcDay } from "./util.js";
 
 const MINUTE = 60_000;
 
-export async function seedWorkspace(db, now = Date.now()) {
+export function seedWorkspace(db, now = Date.now()) {
   const fresh = emptyState();
+  fresh.meta.revision = db.meta.revision; // never goes backwards, so a reset still counts as a change to save and to other tabs
   db.load(fresh);
   db.meta.jwtSecret = randomSecret();
   db.meta.seededAt = now;
@@ -53,11 +54,9 @@ export async function seedWorkspace(db, now = Date.now()) {
   );
 
   // ---- people -------------------------------------------------------------------------
-  const passwordHashes = await Promise.all(Array.from({ length: 8 }, () => hashPassword(SEED_PASSWORD)));
-  let hashIndex = 0;
   const staff = (name, email, phone, dept, title, level, store, responsibilities) =>
     db.insert("users", {
-      name, email, phone, hashed_password: passwordHashes[hashIndex++], role: "employee", department: dept, title,
+      name, email, phone, hashed_password: { ...SEED_PASSWORD_HASH }, role: "employee", department: dept, title,
       access_level: level, responsibilities, store_id: store.id, loyalty_points: 0, preferred_store_id: null,
       notify_restock: true, notify_security: true, notify_orders: true, created_at: at(-150),
     });
@@ -79,7 +78,7 @@ export async function seedWorkspace(db, now = Date.now()) {
 
   const customer = (name, email, phone, points, login) =>
     db.insert("users", {
-      name, email, phone, hashed_password: login ? passwordHashes[hashIndex++] : null, role: "customer",
+      name, email, phone, hashed_password: login ? { ...SEED_PASSWORD_HASH } : null, role: "customer",
       department: null, title: null, access_level: null, responsibilities: [], store_id: null, loyalty_points: points,
       preferred_store_id: null, notify_restock: true, notify_security: true, notify_orders: true, created_at: at(-90),
     });
@@ -211,7 +210,7 @@ export async function seedWorkspace(db, now = Date.now()) {
   const zoneDefs = [
     ["Zone A · Dry Goods & Produce", ["Bakery", "Produce"], 1400],
     ["Zone B · Cold Storage", ["Dairy & Chilled", "Meat & Seafood"], 1400],
-    ["Zone C · Frozen", ["Frozen"], 320],
+    ["Zone C · Frozen", ["Frozen"], 420],
     ["Zone D · Receiving & Staging", [], 500],
   ];
   for (const store of stores) {

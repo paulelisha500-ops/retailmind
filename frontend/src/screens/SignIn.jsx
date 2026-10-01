@@ -53,7 +53,7 @@ export default function SignIn({ onBack }) {
 
         {EDITION === "browser" && (
           <div className="auth__accounts">
-            <div className="section__title"><span>Workspace accounts</span></div>
+            <div className="section__title"><h2>Workspace accounts</h2></div>
             <List>
               {SEED_ACCOUNTS.map((a) => (
                 <ListRow key={a.email} tid={`signin.account.${a.role.toLowerCase()}`} onClick={() => { setEmail(a.email); setPassword(SEED_PASSWORD); submit(a.email, SEED_PASSWORD); }}

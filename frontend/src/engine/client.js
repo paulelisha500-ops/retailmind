@@ -38,6 +38,12 @@ export function warmEngine() {
   if (!startWorker()) fallback ??= import("./index.js").then((m) => m.createEngine());
 }
 
+/** Asks the engine to save the workspace right now (best effort — used when the page is hidden or closing). */
+export function flushEngine() {
+  if (worker) worker.postMessage({ flush: true });
+  else fallback?.then((engine) => engine.flush());
+}
+
 export function engineRequest(request) {
   if (startWorker()) {
     return new Promise((resolve) => {

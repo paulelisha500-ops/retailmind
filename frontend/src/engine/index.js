@@ -27,11 +27,13 @@ export async function createEngine({ persist = true, clock = Date.now } = {}) {
   const now = clock();
   const db = new Database();
   const saved = persist ? await loadState() : null;
+  let storedRevision = -1; // what IndexedDB already holds, so an unchanged workspace isn't rewritten
   if (saved?.version === SCHEMA_VERSION && saved.meta?.jwtSecret) {
     db.load(saved);
+    storedRevision = db.meta.revision;
     alignClock(db, now);
   } else {
-    await seedWorkspace(db, now);
+    seedWorkspace(db, now);
   }
 
   const rt = {
@@ -40,14 +42,16 @@ export async function createEngine({ persist = true, clock = Date.now } = {}) {
     forecastCache: new Map(),
     ml: createMlRunner(),
     reset: async () => {
-      await seedWorkspace(db, clock());
+      seedWorkspace(db, clock());
       rt.forecastCache.clear();
       rt.loginFailures.clear();
     },
   };
 
-  const persistence = persist ? attachPersistence(db, { onExternalChange: () => rt.forecastCache.clear() }) : null;
-  await persistence?.flush();
+  const persistence = persist ? attachPersistence(db, { onExternalChange: () => rt.forecastCache.clear(), savedRevision: storedRevision }) : null;
+  // A new workspace (or one whose clock just moved on) is saved shortly after start-up rather than before
+  // it, so the first requests don't wait on IndexedDB; an unchanged one is left alone.
+  if (persistence) setTimeout(persistence.flush, 250);
 
   const router = new Router();
   for (const mod of MODULES) mod.register(router);

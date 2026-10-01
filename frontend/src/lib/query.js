@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { apiFetch } from "../api.js";
 
-const entries = new Map(); // key -> { data, error, at, promise, version }
+const entries = new Map(); // key -> { data, error, at, promise, version, again }
 const listeners = new Map(); // key -> Set<fn>
+const fetchers = new Map(); // key -> Set<() => Promise> — how to re-read each query that is on screen right now
 const STALE_MS = 15_000;
 
 const notify = (key) => listeners.get(key)?.forEach((fn) => fn());
@@ -19,13 +20,20 @@ const snapshot = (key) => entries.get(key);
 
 function load(key, fetcher, { force = false } = {}) {
   const entry = entries.get(key);
-  if (entry?.promise) return entry.promise;
+  if (entry?.promise) {
+    // A request is already out. If this one was forced (a mutation just landed), what's coming back may
+    // predate it, so read once more when it does rather than letting the older answer stand.
+    if (force) entry.again = true;
+    return entry.promise;
+  }
   if (!force && entry?.at && Date.now() - entry.at < STALE_MS) return Promise.resolve(entry.data);
 
   const promise = fetcher().then(
     (data) => {
+      const again = entries.get(key)?.again;
       entries.set(key, { data, error: null, at: Date.now(), promise: null, version: (entries.get(key)?.version ?? 0) + 1 });
       notify(key);
+      if (again) load(key, fetcher, { force: true }).catch(() => {});
       return data;
     },
     (error) => {
@@ -49,10 +57,15 @@ export function useQuery(path, { token, enabled = true, refetchMs = 0 } = {}) {
 
   useEffect(() => {
     if (!enabled || !path) return undefined;
-    load(key, () => fetcherRef.current()).catch(() => {});
-    if (!refetchMs) return undefined;
-    const id = setInterval(() => load(key, () => fetcherRef.current(), { force: true }).catch(() => {}), refetchMs);
-    return () => clearInterval(id);
+    const run = () => fetcherRef.current();
+    if (!fetchers.has(key)) fetchers.set(key, new Set());
+    fetchers.get(key).add(run);
+    load(key, run).catch(() => {});
+    const id = refetchMs ? setInterval(() => load(key, run, { force: true }).catch(() => {}), refetchMs) : null;
+    return () => {
+      clearInterval(id);
+      fetchers.get(key)?.delete(run);
+    };
   }, [key, enabled, path, refetchMs]);
 
   const refetch = useCallback(() => load(key, () => fetcherRef.current(), { force: true }), [key]);
@@ -73,13 +86,32 @@ export function setQuery(path, valueOrUpdater) {
   notify(path);
 }
 
-/** Mark everything whose path starts with `prefix` stale and refetch what's currently on screen. */
+/**
+ * Shows a change instantly, then confirms it: `updater` is applied to what's cached for `path` right away,
+ * then `request` runs. If it fails the previous data is put back and the error is rethrown, so a control
+ * never sits waiting on the round trip but never keeps a change that didn't happen either.
+ */
+export async function optimistic(path, updater, request) {
+  const before = entries.get(path)?.data;
+  setQuery(path, updater);
+  try {
+    return await request();
+  } catch (error) {
+    setQuery(path, before);
+    throw error;
+  }
+}
+
+/**
+ * Mark everything whose path starts with `prefix` stale, and re-read what is on screen right now (the old
+ * data stays visible until the new arrives). Anything not showing is simply re-read next time it opens.
+ */
 export function invalidate(prefix) {
-  for (const key of entries.keys()) {
+  for (const key of [...entries.keys()]) {
     if (!key.startsWith(prefix)) continue;
-    const entry = entries.get(key);
-    entries.set(key, { ...entry, at: 0 });
-    if (listeners.get(key)?.size) notify(key);
+    entries.set(key, { ...entries.get(key), at: 0 });
+    const run = fetchers.get(key)?.values().next().value;
+    if (run) load(key, run, { force: true }).catch(() => {});
   }
 }
 

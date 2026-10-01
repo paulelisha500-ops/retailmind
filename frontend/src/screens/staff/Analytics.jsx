@@ -175,7 +175,8 @@ function ProfitLoss({ enterprise, storeId, token }) {
 
 export default function Analytics({ onNav }) {
   const { token, storeMode, activeStoreId, activeStore } = useSession();
-  const [tab, setTab] = useState("overview");
+  // `#/analytics?tab=pnl` opens straight on Profit & Loss (the Profile screen links there).
+  const [tab, setTab] = useState(() => (new URLSearchParams(location.hash.split("?")[1] ?? "").get("tab") === "pnl" ? "pnl" : "overview"));
   const enterprise = storeMode === "enterprise";
   return (
     <div className="screen">

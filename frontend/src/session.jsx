@@ -1,7 +1,7 @@
 // Who is signed in, which store they're looking at, and the actions that change either.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ApiError, UNAUTHORIZED_EVENT, apiFetch } from "./api.js";
-import { clearQueries, useQuery } from "./lib/query.js";
+import { clearQueries, setQuery, useQuery } from "./lib/query.js";
 
 const TOKEN_KEY = "retailmind_token";
 const SessionContext = createContext(null);
@@ -12,6 +12,16 @@ const storage = {
   set: (value) => { try { localStorage.setItem(TOKEN_KEY, value); } catch { /* private window: stay signed in for this tab only */ } },
   clear: () => { try { localStorage.removeItem(TOKEN_KEY); } catch { /* nothing stored */ } },
 };
+
+/**
+ * Reads the profile together with the store list and puts the stores in the cache, so the first screen
+ * paints once with its store name instead of shifting when that arrives a moment later.
+ */
+async function loadSession(token) {
+  const [profile, stores] = await Promise.all([apiFetch("/auth/me", { token }), apiFetch("/stores", { token }).catch(() => null)]);
+  if (stores) setQuery("/stores", stores);
+  return profile;
+}
 
 export function SessionProvider({ children }) {
   const [token, setToken] = useState(storage.get);
@@ -28,7 +38,7 @@ export function SessionProvider({ children }) {
   useEffect(() => {
     if (!token) return undefined;
     let cancelled = false;
-    apiFetch("/auth/me", { token })
+    loadSession(token)
       .then((profile) => { if (!cancelled) setMe(profile); })
       .catch((err) => { if (err instanceof ApiError && err.status === 401) { storage.clear(); setToken(null); } })
       .finally(() => { if (!cancelled) setBooting(false); });
@@ -55,7 +65,7 @@ export function SessionProvider({ children }) {
 
   const signIn = useCallback(async (email, password) => {
     const res = await apiFetch("/auth/login", { method: "POST", body: { email, password } });
-    const profile = await apiFetch("/auth/me", { token: res.access_token });
+    const profile = await loadSession(res.access_token);
     storage.set(res.access_token);
     setNotice("");
     setToken(res.access_token);

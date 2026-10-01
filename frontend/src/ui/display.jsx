@@ -62,7 +62,7 @@ export function Meter({ pct, tone }) {
 export function Section({ title, action, children, className }) {
   return (
     <section className={cx("section", className)}>
-      {(title || action) && <div className="section__title"><span>{title}</span>{action}</div>}
+      {(title || action) && <div className="section__title"><h2>{title}</h2>{action}</div>}
       {children}
     </section>
   );

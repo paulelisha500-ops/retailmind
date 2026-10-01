@@ -5,7 +5,7 @@ import { useHashRoute } from "./lib/hooks.js";
 import Landing from "./screens/Landing.jsx";
 import SignIn from "./screens/SignIn.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
-import { ToastProvider } from "./ui/Toast.jsx";
+import { ToastProvider, useToast } from "./ui/Toast.jsx";
 import { Avatar, Skeleton } from "./ui/display.jsx";
 
 // Every signed-in screen is its own chunk, fetched on demand and warmed while the browser is idle.
@@ -112,14 +112,22 @@ function Shell({ screenId, navigate }) {
 }
 
 function Root() {
-  const { me, booting } = useSession();
+  const { me, booting, notice } = useSession();
   const [route, navigate] = useHashRoute();
+  const toast = useToast();
+
+  useEffect(() => {
+    const onUpdate = () => toast.show("A new version of RetailMind is ready.", { ms: 0, action: { label: "Reload", tid: "app.update-reload", onClick: () => window.location.reload() } });
+    window.addEventListener("rm:update-ready", onUpdate);
+    return () => window.removeEventListener("rm:update-ready", onUpdate);
+  }, [toast]);
 
   useEffect(() => {
     if (booting) return;
     if (me && (route === "/" || route === "/sign-in")) navigate("/home", { replace: true });
-    else if (!me && route !== "/" && route !== "/sign-in") navigate("/", { replace: true });
-  }, [me, booting, route, navigate]);
+    // A notice ("session ended", "workspace reset") belongs on the sign-in screen, which is where it's shown.
+    else if (!me && route !== "/" && route !== "/sign-in") navigate(notice ? "/sign-in" : "/", { replace: true });
+  }, [me, booting, route, navigate, notice]);
 
   if (booting) {
     return <div className="boot" role="status" aria-label="Restoring your session"><div className="brand__mark"><Leaf size={22} aria-hidden="true" /></div></div>;

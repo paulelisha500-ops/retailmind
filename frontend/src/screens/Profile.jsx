@@ -3,7 +3,7 @@ import { useState } from "react";
 import { EDITION, apiFetch } from "../api.js";
 import { aed, fmtDate, loyaltyTier, plural } from "../lib/format.js";
 import { readTheme, setTheme } from "../lib/theme.js";
-import { useQuery } from "../lib/query.js";
+import { invalidate, useQuery } from "../lib/query.js";
 import { useSession } from "../session.jsx";
 import { Button, Segmented, Switch } from "../ui/controls.jsx";
 import { Avatar, Banner, Collapse, Empty, List, ListRow, Section, Skeleton, Tag } from "../ui/display.jsx";
@@ -24,8 +24,6 @@ export default function Profile({ onNav }) {
   const toast = useToast();
   const [open, setOpen] = useState(null);
   const [theme, setThemeState] = useState(readTheme);
-  const [savingPrefs, setSavingPrefs] = useState(false);
-  const [savingStore, setSavingStore] = useState(false);
   const [error, setError] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -34,22 +32,26 @@ export default function Profile({ onNav }) {
   const pnl = useQuery("/analytics/pnl?days=30", { token, enabled: open === "payments" && isAdmin });
   const toggle = (panel) => setOpen((p) => (p === panel ? null : panel));
 
+  // A switch or a store choice moves at once and is put back only if the change is refused.
   async function savePrefs(next) {
-    setSavingPrefs(true);
+    const before = me;
     setError("");
+    setMe({ ...me, ...next });
     try {
-      setMe(await apiFetch("/auth/me", { method: "PATCH", token, body: next }));
+      await apiFetch("/auth/me", { method: "PATCH", token, body: next });
+      invalidate("/notifications"); // what the bell reports depends on these switches
       toast.show("Notification settings saved");
-    } catch (err) { setError(err.message); } finally { setSavingPrefs(false); }
+    } catch (err) { setMe(before); setError(err.message); }
   }
 
   async function chooseStore(id) {
-    setSavingStore(true);
+    const before = me;
     setError("");
+    setMe({ ...me, preferred_store_id: id });
     try {
-      setMe(await apiFetch("/auth/me", { method: "PATCH", token, body: { preferred_store_id: id } }));
+      await apiFetch("/auth/me", { method: "PATCH", token, body: { preferred_store_id: id } });
       toast.show("Preferred store updated");
-    } catch (err) { setError(err.message); } finally { setSavingStore(false); }
+    } catch (err) { setMe(before); setError(err.message); }
   }
 
   async function resetWorkspace() {
@@ -93,7 +95,7 @@ export default function Profile({ onNav }) {
                         <Tag>{pnl.data.margin_pct}% margin</Tag>
                         <Tag>{plural(pnl.data.orders, "order")}</Tag>
                       </div>
-                      <Button variant="tint" size="sm" tid="profile.open-pnl" onClick={() => onNav("analytics")}>Open full Profit &amp; Loss</Button>
+                      <Button variant="tint" size="sm" tid="profile.open-pnl" onClick={() => onNav("analytics?tab=pnl")}>Open full Profit &amp; Loss</Button>
                     </>
                   )
                 ) : receipts.loading ? <Skeleton lines={2} /> : receipts.data?.length ? (
@@ -117,7 +119,7 @@ export default function Profile({ onNav }) {
                 {NOTIFICATION_PREFS.map(([key, title, detail]) => (
                   <label key={key} className="pref">
                     <span><span className="strong">{title}</span><span className="t-foot" style={{ display: "block" }}>{detail}</span></span>
-                    <Switch checked={!!me[key]} disabled={savingPrefs} label={title} tid={`profile.pref.${key}`} onChange={(value) => savePrefs({ [key]: value })} />
+                    <Switch checked={!!me[key]} label={title} tid={`profile.pref.${key}`} onChange={(value) => savePrefs({ [key]: value })} />
                   </label>
                 ))}
               </div>
@@ -133,7 +135,7 @@ export default function Profile({ onNav }) {
                 <p className="t-foot mb-2">{me.preferred_store_id ? "Your shopping list checks out at this store." : "No preference set yet — checkout uses the store marked below."}</p>
                 <div className="store-options">
                   {stores.map((s) => (
-                    <button key={s.id} type="button" data-tid="profile.store.choose" className="store-option" disabled={savingStore} onClick={() => chooseStore(s.id)}>
+                    <button key={s.id} type="button" data-tid="profile.store.choose" className="store-option" onClick={() => chooseStore(s.id)}>
                       <span><span className="strong">{s.name} {s.code}</span>{(s.region || s.is_headquarters) && <span className="t-foot" style={{ display: "block" }}>{s.region}{s.region && s.is_headquarters ? " · " : ""}{s.is_headquarters ? "Headquarters" : ""}</span>}</span>
                       {customerStoreId === s.id && <CheckIcon size={18} className="store-option__tick" aria-label="Selected" />}
                     </button>
