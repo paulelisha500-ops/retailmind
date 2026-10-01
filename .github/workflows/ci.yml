@@ -1,0 +1,86 @@
+name: CI
+
+# Every push and pull request is linted, unit-tested, built, and driven end to end in a real browser.
+# A push to main then publishes the exact build that passed to GitHub Pages.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, unit tests, end-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (the engine)
+        run: npm test
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      # Lists every button, field and control in the source. The suite below must use all of them.
+      - name: Census of interactive elements
+        run: npm run census -- --json
+
+      # Builds the production bundle, serves it, and drives the desktop and phone layouts.
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: No untested control
+        run: node scripts/coverage-gate.mjs
+
+      - name: Keep the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
+      # The e2e run built frontend/dist; ship that same output.
+      - name: Package the site
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
