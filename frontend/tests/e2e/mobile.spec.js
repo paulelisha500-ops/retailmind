@@ -46,7 +46,7 @@ test.describe("layout", () => {
     for (const [role, routes] of visits) {
       await signInAs(page, role);
       for (const route of routes) {
-        await page.goto(`/#/${route}`);
+        await page.goto(`./#/${route}`);
         await page.waitForLoadState("networkidle");
         await expect(page.locator("main h1").first()).toBeVisible();
         expect(await sideways(page), `${role} → ${route} overflows sideways`).toBeLessThanOrEqual(1);
@@ -58,10 +58,10 @@ test.describe("layout", () => {
   });
 
   test("the landing page and sign-in fit a phone too", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("./");
     await expect(h1(page, /Every aisle, every shelf/)).toBeVisible();
     expect(await sideways(page)).toBeLessThanOrEqual(1);
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await expect(h1(page, "Sign in to RetailMind")).toBeVisible();
     expect(await sideways(page)).toBeLessThanOrEqual(1);
   });
@@ -162,7 +162,7 @@ test.describe("accessibility on a phone", () => {
     test(`the tab bar, screens and a sheet pass the audit (${scheme})`, async ({ browser }) => {
       const context = await browser.newContext({ colorScheme: scheme, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: "reduce" });
       const page = await context.newPage();
-      await page.goto("/");
+      await page.goto("./");
       await expect(h1(page, /Every aisle, every shelf/)).toBeVisible();
       await audit(page, "the landing page on a phone");
 

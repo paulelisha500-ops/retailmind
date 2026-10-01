@@ -17,10 +17,23 @@ const STATIC_PATHS = new Set(PRECACHE.map((url) => new URL(url, SCOPE).pathname)
 // fails even though the file is sitting in the cache. Nothing here varies by request header.
 const MATCH = { ignoreVary: true };
 
+// A page load can't be answered with a response that came through a redirect: the browser refuses it and the tab
+// shows a network error. Some hosts (Hugging Face static Spaces) redirect the scope root to /index.html, so the
+// shell is kept and served as a plain copy of that response.
+async function plain(response) {
+  if (!response.redirected) return response;
+  return new Response(await response.blob(), { status: response.status, statusText: response.statusText, headers: response.headers });
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll(PRECACHE.map((url) => new Request(new URL(url, SCOPE), { cache: "reload" })));
+    await Promise.all(PRECACHE.map(async (url) => {
+      const request = new Request(new URL(url, SCOPE), { cache: "reload" });
+      const response = await fetch(request);
+      if (!response.ok) throw new TypeError(`${url} answered ${response.status}`);
+      await cache.put(request, await plain(response));
+    }));
     await self.skipWaiting();
   })());
 });
@@ -45,9 +58,10 @@ async function cacheFirst(request) {
 async function staleWhileRevalidate(request, fallbackKey) {
   const cache = await caches.open(CACHE);
   const hit = await cache.match(fallbackKey ?? request, MATCH);
-  const refresh = fetch(request).then((response) => {
-    if (response.ok) cache.put(fallbackKey ?? request, response.clone());
-    return response;
+  const refresh = fetch(request).then(async (response) => {
+    if (!response.ok) return response;
+    cache.put(fallbackKey ?? request, await plain(response.clone()));
+    return plain(response);
   });
   if (hit) { refresh.catch(() => {}); return hit; }
   return refresh;

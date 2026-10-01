@@ -34,6 +34,16 @@ If you touched `backend/`, also run `pytest` and `ruff check .` there.
 and, together with `npm run census` and `node scripts/coverage-gate.mjs`, the check that **every interactive element
 in the source was exercised by a test**. That gate is what keeps a button from shipping untested.
 
+The same suite can drive a site that is already deployed, to check what visitors actually get:
+
+```bash
+E2E_BASE_URL=https://paulelisha500-ops.github.io/retailmind/ npm run test:e2e         # GitHub Pages
+E2E_BASE_URL=https://elisha622-retailmind.static.hf.space/ npm run test:e2e           # Hugging Face Space
+```
+
+(PowerShell: `$env:E2E_BASE_URL = "..."` first.) The four tests that type an email and password into the sign-in form
+are skipped against a deployed site unless `E2E_LIVE_CREDENTIALS=1` is set by the site's owner.
+
 ## House rules
 
 - **Every control gets a test id.** Pass `tid="screen.thing"` to the shared controls (`Button`, `Input`, `Switch`,

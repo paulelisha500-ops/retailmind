@@ -14,7 +14,7 @@ async function controlled(page) {
 
 test.describe("installability", () => {
   test("ships a complete web app manifest and the icons it points at", async ({ page, request }) => {
-    await page.goto("/");
+    await page.goto("./");
     const href = await page.locator('link[rel="manifest"]').getAttribute("href");
     const manifest = await (await request.get(new URL(href, page.url()).href)).json();
     expect(manifest).toMatchObject({ name: "RetailMind", display: "standalone" });
@@ -33,7 +33,7 @@ test.describe("installability", () => {
   });
 
   test("declares a theme colour for both appearances, an iOS icon and a viewport that respects the notch", async ({ page, request }) => {
-    await page.goto("/");
+    await page.goto("./");
     expect(await page.locator('meta[name="theme-color"]').count()).toBeGreaterThanOrEqual(1);
     const touch = await page.locator('link[rel="apple-touch-icon"]').getAttribute("href");
     expect((await request.get(new URL(touch, page.url()).href)).status()).toBe(200);
@@ -44,7 +44,7 @@ test.describe("installability", () => {
 
 test.describe("offline", () => {
   test("registers a service worker that precaches the whole app", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("./");
     await controlled(page);
     const cached = await page.evaluate(async () => {
       const names = await caches.keys();
@@ -60,7 +60,7 @@ test.describe("offline", () => {
   });
 
   test("reopens, signs in and works across every screen with no network at all", async ({ page, context }) => {
-    await page.goto("/");
+    await page.goto("./");
     await controlled(page);
     await context.setOffline(true);
 
@@ -69,18 +69,18 @@ test.describe("offline", () => {
 
     await signInAs(page, "admin");
     for (const [route, title] of [["cashier", "Cashier"], ["monitoring", "Monitoring"], ["forecast", "Forecast"], ["procurement", "Procurement"], ["assistant", "Ask RetailMind"], ["warehouse", "Warehouse"], ["analytics", "Analytics"], ["team", "Team & Access"], ["tasks", "Tasks"]]) {
-      await page.goto(`/#/${route}`);
+      await page.goto(`./#/${route}`);
       await expect(h1(page, title)).toBeVisible();
     }
     // The forecasts train in the browser, so they work offline too.
-    await page.goto("/#/forecast");
+    await page.goto("./#/forecast");
     await tid(page, "forecast.method.lstm").click();
     await expect(page.getByText(/% MAPE/)).toBeVisible({ timeout: 30_000 });
     await context.setOffline(false);
   });
 
   test("keeps what you change across a reload, offline or not", async ({ page, context }) => {
-    await page.goto("/");
+    await page.goto("./");
     await controlled(page);
     await context.setOffline(true);
     await signInAs(page, "staff");

@@ -312,7 +312,7 @@ test.describe("customer directory", () => {
 test.describe("access", () => {
   test("customers can't reach the register", async ({ page }) => {
     await signInAs(page, "customer");
-    await page.goto("/#/cashier");
+    await page.goto("./#/cashier");
     await expect(h1(page, /Hi, Layla/)).toBeVisible();
   });
 });

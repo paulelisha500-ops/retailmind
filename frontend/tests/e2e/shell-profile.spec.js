@@ -24,7 +24,7 @@ test.describe("navigation", () => {
     }
     // Admin-only routes bounce back to Home.
     for (const route of ["team", "analytics"]) {
-      await page.goto(`/#/${route}`);
+      await page.goto(`./#/${route}`);
       await expect(heading(page, /Hi, Diego/)).toBeVisible();
     }
   });
@@ -35,7 +35,7 @@ test.describe("navigation", () => {
       await tid(page, `nav.${id}`).click();
       await expect(heading(page, name)).toBeVisible();
     }
-    await page.goto("/#/cashier");
+    await page.goto("./#/cashier");
     await expect(heading(page, /Hi, Layla/)).toBeVisible();
   });
 
