@@ -12,7 +12,7 @@ export function serviceWorkerPlugin() {
     generateBundle(_options, bundle) {
       const publicFiles = readdirSync(publicDir).filter((f) => f !== "sw.js");
       const files = [...new Set([...Object.keys(bundle), ...publicFiles])]
-        .filter((f) => f !== "sw.js" && !f.endsWith(".map"))
+        .filter((f) => f !== "sw.js" && !f.endsWith(".map") && f !== "social-preview.png") // the share card is for crawlers, not visitors
         .sort();
       const shell = bundle["index.html"]?.source ?? "";
       const template = readFileSync(resolve("scripts/sw.template.js"), "utf8");
