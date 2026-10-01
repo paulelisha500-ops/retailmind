@@ -2,5 +2,5 @@
 # exercise those skip themselves when the library is absent, so this stays a fast install.
 -r requirements-base.txt
 httpx>=0.27
-pytest>=8
+pytest>=9.1.1
 ruff>=0.6
