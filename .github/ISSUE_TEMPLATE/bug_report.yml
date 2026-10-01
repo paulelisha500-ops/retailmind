@@ -1,0 +1,41 @@
+name: Bug report
+description: Something does not work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as the admin account
+        2. Open Procurement -> Suppliers
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition
+      options:
+        - Browser edition (GitHub Pages / Hugging Face / npm run dev)
+        - Server edition (FastAPI + PostgreSQL)
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: Safari 18 on iPhone 15, Chrome 141 on Windows 11, ...
+  - type: textarea
+    id: console
+    attributes:
+      label: Anything in the browser console
+      description: Open the developer tools (F12) and paste any red errors.
+      render: shell

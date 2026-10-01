@@ -26,9 +26,10 @@ export default defineConfig({
     trace: "on-first-retry", // screencast tracing on every test slows a laptop enough to cause timeouts; failures still keep a screenshot + DOM snapshot
     screenshot: "only-on-failure",
   },
-  // The suite runs against the production build — exactly what gets deployed.
+  // The suite runs against the production build — exactly what gets deployed. In CI the build is made once, by an
+  // earlier job, and handed to every test shard (PREBUILT=1), so the bytes that were tested are the bytes published.
   webServer: {
-    command: `npm run build && npm run preview -- --strictPort`,
+    command: process.env.PREBUILT ? "npm run preview -- --strictPort" : "npm run build && npm run preview -- --strictPort",
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !CI,
     timeout: 240_000,

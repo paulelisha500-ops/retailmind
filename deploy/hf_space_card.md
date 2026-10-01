@@ -5,7 +5,8 @@ colorFrom: green
 colorTo: blue
 sdk: static
 pinned: false
-short_description: Forecasting, procurement, shelf alerts, register and customer app
+short_description: Retail operations console that runs in your browser
+thumbnail: https://huggingface.co/spaces/Elisha622/retailmind/resolve/main/social-preview.png
 ---
 
 # RetailMind

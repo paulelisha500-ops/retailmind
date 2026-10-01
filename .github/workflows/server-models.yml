@@ -1,0 +1,54 @@
+name: Server forecasting methods
+
+# Runs the real Prophet, XGBoost and PyTorch forecasters against the seeded sales history. They are large downloads,
+# so this runs only when the backend changes (or on demand), not on every push; the everyday backend checks are in the
+# `server` job of ci.yml, where these tests skip themselves.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/server-models.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/server-models.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-models-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  forecasting:
+    name: Prophet, XGBoost, LSTM and attention
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      # The CPU build of PyTorch first: the default wheel bundles CUDA and is far larger than a runner needs.
+      - name: Install PyTorch (CPU)
+        run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install the server dependencies
+        run: python -m pip install -r requirements.txt -r requirements-test.txt
+
+      # With every library installed, a skipped method would be a silent gap, so a missing one fails the run.
+      - name: Run the forecasting tests
+        env:
+          REQUIRE_FORECAST_LIBS: "1"
+        run: python -m pytest tests/test_forecast.py tests/test_forecast_models.py -rs
