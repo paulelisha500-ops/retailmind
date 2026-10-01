@@ -36,6 +36,7 @@ for (const scheme of ["light", "dark"]) {
 
     for (const [role, routes] of Object.entries(SCREENS)) {
       test(`every ${role} screen`, async ({ page }) => {
+        test.slow(); // an audit per screen: generous on a slower CI runner
         await signInAs(page, role);
         for (const route of routes) {
           await page.goto(`/#/${route}`);
@@ -47,6 +48,7 @@ for (const scheme of ["light", "dark"]) {
     }
 
     test("dialogs, forms and states that only appear after interaction", async ({ page }) => {
+      test.slow(); // about 45 s on a fast laptop, because it trains every forecasting method in the page
       await signInAs(page, "admin");
 
       // the notification sheet
