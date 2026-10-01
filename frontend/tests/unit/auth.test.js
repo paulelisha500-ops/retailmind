@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { signJwt } from "../../src/engine/crypto.js";
-import { SEED_ACCOUNTS, SEED_PASSWORD } from "../../src/engine/accounts.js";
+import { PBKDF2_ITERATIONS, signJwt, verifyPassword } from "../../src/engine/crypto.js";
+import { SEED_ACCOUNTS, SEED_PASSWORD, SEED_PASSWORD_HASH } from "../../src/engine/accounts.js";
 import { boot } from "./helpers.js";
 
 let t;
@@ -31,6 +31,16 @@ describe("seed", () => {
   it("never stores passwords in the clear and gives every quick sign-in account a login", async () => {
     for (const u of t.db.all("users")) expect(JSON.stringify(u.hashed_password ?? "")).not.toContain(SEED_PASSWORD);
     for (const a of SEED_ACCOUNTS) expect(await t.login(a.email)).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+  });
+
+  it("ships a precomputed password record that matches the password and the current cost", async () => {
+    expect(SEED_PASSWORD_HASH.iterations).toBe(PBKDF2_ITERATIONS);
+    expect(await verifyPassword(SEED_PASSWORD, SEED_PASSWORD_HASH)).toBe(true);
+    expect(await verifyPassword("not-it", SEED_PASSWORD_HASH)).toBe(false);
+    // Each account holds its own copy, so changing one password can never touch another.
+    const records = t.db.all("users").map((u) => u.hashed_password).filter(Boolean);
+    expect(new Set(records).size).toBe(records.length);
+    expect(() => { SEED_PASSWORD_HASH.salt = "x"; }).toThrow();
   });
 
   it("keeps loyalty-only members unable to sign in", async () => {
@@ -128,5 +138,29 @@ describe("routing", () => {
   it("exposes health and workspace info without signing in", async () => {
     expect((await t.call("GET", "/health")).body.status).toBe("ok");
     expect((await t.call("GET", "/workspace")).body.edition).toBe("browser");
+  });
+});
+
+describe("workspace reset", () => {
+  it("restores the original data, signs everyone out, and keeps the revision counter climbing", async () => {
+    const fresh = await boot();
+    const admin = await fresh.as("admin");
+    const task = (await fresh.call("GET", `/tasks?store_id=${fresh.hq.id}`, { token: admin })).body.find((x) => !x.done);
+    await fresh.call("PATCH", `/tasks/${task.id}/toggle`, { token: admin });
+    const before = fresh.db.meta.revision;
+
+    expect((await fresh.call("POST", "/workspace/reset", { token: await fresh.as("staff") })).status).toBe(403);
+    expect((await fresh.call("POST", "/workspace/reset", { token: admin })).status).toBe(200);
+
+    // The revision is what storage and other tabs compare, so a reset must read as newer, never older.
+    expect(fresh.db.meta.revision).toBeGreaterThan(before);
+    // Old tokens were signed with the previous secret.
+    expect((await fresh.call("GET", "/auth/me", { token: admin })).status).toBe(401);
+    // (A direct login: the helper's token cache would hand back the old, now-invalid one.)
+    const signedIn = await fresh.call("POST", "/auth/login", { body: { email: "marcus@retailmind.app", password: SEED_PASSWORD } });
+    expect(signedIn.status).toBe(200);
+    const hq = fresh.db.all("stores").find((s) => s.is_headquarters);
+    const tasks = (await fresh.call("GET", `/tasks?store_id=${hq.id}`, { token: signedIn.body.access_token })).body;
+    expect(tasks.filter((x) => !x.done)).toHaveLength(5);
   });
 });
