@@ -1,8 +1,6 @@
 """
-The bell icon's dropdown — a real feed merged from open alerts, products
-that have crossed their reorder threshold, and recent customer orders
-("payments"), sorted by recency. Nothing here is a fixed demo list; every
-row traces back to a live query.
+The bell icon's dropdown — a feed merged from open alerts, products that have crossed their reorder threshold, and
+recent customer orders ("payments"), sorted by recency. Every row traces back to a live query.
 """
 from datetime import datetime, timedelta
 

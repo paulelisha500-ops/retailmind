@@ -1,6 +1,6 @@
 """
-Password hashing, JWT issuing/verification, and the RBAC dependencies used
-to gate routes the same way the frontend prototype gates screens:
+Password hashing, JWT issuing/verification, and the role-based access dependencies that gate routes the same way
+the app gates screens:
   - `require_employee`     — any signed-in staff member
   - `require_responsibility("Purchase Approvals")` — must be Admin OR have
     that specific responsibility assigned in Team & Access
@@ -47,8 +47,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         user_id: Optional[str] = payload.get("sub")
         if user_id is None:
             raise credentials_error
-    except JWTError:
-        raise credentials_error
+    except JWTError as exc:
+        raise credentials_error from exc
 
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:

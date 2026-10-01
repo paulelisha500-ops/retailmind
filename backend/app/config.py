@@ -5,7 +5,6 @@ See .env.example for the full list of variables this expects.
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 INSECURE_JWT_SECRETS = {"change-me-in-production", "super_secret_dev_key_12345"}
 
 
@@ -16,11 +15,15 @@ class Settings(BaseSettings):
     app_name: str = "RetailMind AI API"
     environment: str = "development"
 
-    # --- Database (PostgreSQL — SKU master, batches, suppliers, orders, IAM) ---
-    database_url: str = "postgresql+psycopg2://retailmind:retailmind@localhost:5432/retailmind"
+    # --- Database: a local SQLite file by default, so the API runs on plain Python with nothing else installed.
+    # Point it at PostgreSQL (postgresql+psycopg2://user:password@host:5432/name) for a shared, multi-user database. ---
+    database_url: str = "sqlite:///./retailmind.db"
 
-    # --- Redis (live layer: shelf-fill %, open alert counts, session cache) ---
+    # --- Redis: reserved. Nothing in the API reads it yet. ---
     redis_url: str = "redis://localhost:6379/0"
+
+    # --- Test and throwaway deployments only: lets an admin wipe the database and re-seed it (POST /workspace/reset) ---
+    allow_workspace_reset: bool = False
 
     # --- Auth ---
     jwt_secret: str = "change-me-in-production"

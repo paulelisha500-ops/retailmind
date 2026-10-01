@@ -1,11 +1,7 @@
 """
-Warehouse optimization (Module 7) — storage utilization, pick routes, and
-floor-traffic congestion, all computed live from real rows rather than a
-fixed demo array. Congestion needs point-of-sale timestamp granularity
-SalesRecord doesn't have, so it reads from `transactions` instead — seeded
-with a synthetic-but-realistic hourly pattern (same honesty tradeoff as
-every other seeded table in this app: the base data is a demo seed, the
-numbers shown are always a real aggregation over it, never hardcoded).
+Warehouse — storage utilisation, pick routes and floor-traffic congestion, all computed live from stock, alerts and
+checkout timestamps. Congestion needs point-of-sale timestamp granularity that SalesRecord doesn't have, so it reads
+from `transactions` instead.
 """
 import re
 from datetime import datetime, timedelta
@@ -15,7 +11,20 @@ from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Alert, AlertKind, AlertStatus, Batch, BatchStatus, Product, PurchaseOrder, PurchaseOrderItem, POStatus, Transaction, User, WarehouseZone
+from app.models import (
+    Alert,
+    AlertKind,
+    AlertStatus,
+    Batch,
+    BatchStatus,
+    POStatus,
+    Product,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    Transaction,
+    User,
+    WarehouseZone,
+)
 from app.schemas import CongestionPoint, PickRouteStep, StaffingRecommendation, WarehouseZoneOut
 from app.security import require_employee
 
@@ -59,10 +68,8 @@ def _aisle_sort_key(location: str | None) -> tuple:
 
 @router.get("/pick-route", response_model=list[PickRouteStep])
 def pick_route(store_id: str, db: Session = Depends(get_db), _: User = Depends(require_employee)):
-    """A real replenishment route: every open stock/quality alert plus every
-    batch expiring within 3 days, ordered by aisle number — the same
-    physical-proximity heuristic a real picking-route optimizer uses,
-    just without a warehouse map to route-plan against."""
+    """A replenishment route: every open stock/quality alert plus every batch expiring within 3 days, ordered by
+    aisle number — the physical-proximity heuristic a picking-route optimiser starts from."""
     steps = []
 
     open_alerts = (
@@ -94,9 +101,8 @@ def pick_route(store_id: str, db: Session = Depends(get_db), _: User = Depends(r
 
 @router.get("/congestion", response_model=list[CongestionPoint])
 def congestion(store_id: str, db: Session = Depends(get_db), _: User = Depends(require_employee)):
-    """Average transaction count per hour-of-day, from real (seeded)
-    checkout timestamps — normalized 0-100 against this store's own busiest
-    hour, not a fixed curve."""
+    """Average transaction count per hour of day, from checkout timestamps — normalised 0-100 against this
+    store's own busiest hour."""
     rows = (
         db.query(
             extract("hour", Transaction.timestamp).label("hour"),
@@ -121,9 +127,8 @@ def congestion(store_id: str, db: Session = Depends(get_db), _: User = Depends(r
 
 @router.get("/staffing", response_model=StaffingRecommendation)
 def staffing(store_id: str, db: Session = Depends(get_db), _: User = Depends(require_employee)):
-    """Compares average Saturday transaction volume to the weekday average
-    over the same window and scales a baseline staff count by that real
-    ratio — a transparent formula, not a fixed 'staff up' claim."""
+    """Compares average Saturday transaction volume to the weekday average over the same window and scales a
+    baseline staff count by that ratio — a transparent formula, not a fixed 'staff up' claim."""
     baseline_staff = 4
     rows = db.query(Transaction.timestamp).filter(Transaction.store_id == store_id).all()
     if not rows:

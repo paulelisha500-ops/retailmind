@@ -4,17 +4,12 @@ per request against `sales_records` — the same "train on the request"
 pattern forecast_prophet.py / forecast_xgboost.py already use, just with
 PyTorch (CPU-only build) instead of prophet/xgboost.
 
-Honesty note on the "TFT" model: `train_and_forecast_tft` below is a real,
-trained, attention-based multi-horizon forecaster (a small Transformer
-encoder over the lookback window with a direct multi-step head) — but it is
-NOT the full published Temporal Fusion Transformer (no variable-selection
-networks, gated residual networks, or quantile loss). That needs
-pytorch-forecasting and materially more history per category than the ~90
-days this demo seeds. What's here is architecturally distinct from the LSTM
-(attention instead of recurrence, direct multi-horizon instead of iterative
-rollout) and is genuinely trained on live data — not a fabricated number
-under a model name nothing produced. Swap this function's body for
-pytorch_forecasting.TemporalFusionTransformer against the same DataFrame if
+What the "TFT" method is: `train_and_forecast_tft` below is a trained, attention-based multi-horizon forecaster
+(a small Transformer encoder over the lookback window with a direct multi-step head) — not the full published
+Temporal Fusion Transformer, which adds variable-selection networks, gated residual networks and quantile loss and
+needs materially more history per category than the ~90 days of sales kept here. It is architecturally distinct from
+the LSTM (attention instead of recurrence, direct multi-horizon instead of an iterative rollout) and genuinely
+trained on live data. Swap its body for pytorch_forecasting.TemporalFusionTransformer against the same DataFrame if
 the full architecture is ever needed.
 """
 from __future__ import annotations

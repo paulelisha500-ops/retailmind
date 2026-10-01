@@ -1,12 +1,7 @@
 """
-Prophet forecaster — best for categories with strong weekly/holiday
-seasonality (Produce, Bakery). Needs the `prophet` package installed
-(`pip install prophet`, which pulls in cmdstanpy) and is CPU-only, so it's
-cheap to run on a schedule rather than needing a GPU worker.
-
-This module is written against the real Prophet API and is meant to be run
-once real `sales_records` history exists — it is NOT executed as part of
-this scaffold (no DB/data available in this environment).
+Prophet forecaster — best for categories with strong weekly and holiday seasonality (Produce, Bakery). Needs the
+`prophet` package (`pip install prophet`, which brings cmdstanpy) and is CPU-only, so it is cheap to train on every
+request; the route caches the result until the sales history changes.
 """
 from __future__ import annotations
 
@@ -40,15 +35,8 @@ def train_and_forecast(history: pd.DataFrame, horizon_days: int = 7, holidays: p
 
     future = model.make_future_dataframe(periods=horizon_days)
     if "promo_flag" in history.columns:
-        # Naive carry-forward of the last known promo calendar; in
-        # production this should be joined from a real promo-planning table.
+        # The last known promotion flag carries forward; a promotion calendar would be joined in here.
         future["promo_flag"] = history["promo_flag"].iloc[-1]
 
     forecast = model.predict(future)
     return forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(horizon_days)
-
-
-def compute_mape(actual: pd.Series, predicted: pd.Series) -> float:
-    """Rolling accuracy metric shown in the Forecast Studio MLOps strip."""
-    mask = actual != 0
-    return float((abs((actual[mask] - predicted[mask]) / actual[mask])).mean() * 100)

@@ -13,11 +13,44 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Batch, BatchStatus, POStatus, Product, PurchaseOrder, Supplier, SupplierContactLog, User
 from app.schemas import (
-    PurchaseOrderDecision, PurchaseOrderOut, ReorderNeedOut, SupplierContactLogOut,
-    OnboardingStatus, SupplierContactRequest, SupplierCreate, SupplierImportResult, SupplierOut, SupplierUpdate,
+    OnboardingStatus,
+    PurchaseOrderDecision,
+    PurchaseOrderOut,
+    ReorderNeedOut,
+    SupplierContactLogOut,
+    SupplierContactRequest,
+    SupplierCreate,
+    SupplierImportResult,
+    SupplierOut,
+    SupplierUpdate,
 )
 from app.security import require_employee, require_responsibility
 from app.services import outreach
+
+
+def _int(row: dict, key: str, default: int) -> int:
+    return int(row[key]) if row.get(key, "").lstrip("-").isdigit() else default
+
+
+def _float(row: dict, key: str, default: float) -> float:
+    try:
+        return float(row[key]) if row.get(key) else default
+    except ValueError:
+        return default
+
+
+def _is_referenced(db: Session, supplier_id: str) -> bool:
+    """Products, orders or contacts that point at the supplier. Checked here rather than left to the database so
+    every engine (SQLite doesn't enforce foreign keys, and the ORM would quietly detach the products) answers the same."""
+    return any(
+        db.query(query.exists()).scalar()
+        for query in (
+            db.query(Product).filter(Product.supplier_id == supplier_id),
+            db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id),
+            db.query(SupplierContactLog).filter(SupplierContactLog.supplier_id == supplier_id),
+        )
+    )
+
 
 SUPPLIER_NULLABLE_FIELDS = {"contact_email", "contact_phone", "trade_license_no", "trn", "payment_terms", "cold_chain", "contract_end"}
 ONBOARDING_STATUSES = set(get_args(OnboardingStatus))
@@ -61,7 +94,8 @@ def import_suppliers(file: UploadFile, db: Session = Depends(get_db), _: User = 
     reader = csv.DictReader(io.StringIO(raw))
     if reader.fieldnames is None:
         raise HTTPException(status_code=422, detail="Empty file")
-    missing = {"name", "category"} - {(f or "").strip().lower() for f in reader.fieldnames}
+    present = {(f or "").strip().lower() for f in reader.fieldnames}
+    missing = {"name", "category"} - present
     if missing:
         raise HTTPException(status_code=422, detail=f"CSV is missing required column(s): {', '.join(sorted(missing))}")
 
@@ -75,15 +109,6 @@ def import_suppliers(file: UploadFile, db: Session = Depends(get_db), _: User = 
             errors.append(f"Row {i}: missing name, skipped")
             continue
 
-        def _int(key, default):
-            return int(row[key]) if row.get(key, "").lstrip("-").isdigit() else default
-
-        def _float(key, default):
-            try:
-                return float(row[key]) if row.get(key) else default
-            except ValueError:
-                return default
-
         fields = dict(
             category=row.get("category") or "Produce",
             contact_email=row.get("contact_email") or None,
@@ -93,9 +118,9 @@ def import_suppliers(file: UploadFile, db: Session = Depends(get_db), _: User = 
             payment_terms=row.get("payment_terms") or None,
             cold_chain=row.get("cold_chain") or None,
             onboarding_status=row.get("onboarding_status") or "pending",
-            performance_score=_int("performance_score", 80),
-            on_time_pct=_float("on_time_pct", 90.0),
-            late_deliveries_30d=_int("late_deliveries_30d", 0),
+            performance_score=_int(row, "performance_score", 80),
+            on_time_pct=_float(row, "on_time_pct", 90.0),
+            late_deliveries_30d=_int(row, "late_deliveries_30d", 0),
         )
 
         problem = None
@@ -116,10 +141,13 @@ def import_suppliers(file: UploadFile, db: Session = Depends(get_db), _: User = 
         existing = existing_by_name.get(name.lower())
         if existing:
             for k, v in fields.items():
-                setattr(existing, k, v)
+                if k == "category" or k in present:  # a column that isn't in the file leaves the supplier alone
+                    setattr(existing, k, v)
             updated += 1
         else:
-            db.add(Supplier(name=name, **fields))
+            supplier = Supplier(name=name, **fields)
+            db.add(supplier)
+            existing_by_name[name.lower()] = supplier
             created += 1
 
     db.commit()
@@ -145,12 +173,18 @@ def delete_supplier(supplier_id: str, db: Session = Depends(get_db), _: User = D
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
+    in_use = HTTPException(
+        status_code=409,
+        detail="Can't delete — this supplier has products or purchase orders referencing it. Reassign or remove those first.",
+    )
+    if _is_referenced(db, supplier.id):
+        raise in_use
     try:
         db.delete(supplier)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:  # a reference the check above doesn't know about (Postgres enforces it)
         db.rollback()
-        raise HTTPException(status_code=409, detail="Can't delete — this supplier has products or purchase orders referencing it. Reassign or remove those first.")
+        raise in_use from exc
 
 
 @router.get("/reorder-needed", response_model=list[ReorderNeedOut])

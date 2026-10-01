@@ -1,6 +1,6 @@
 import csv
-import math
 import io
+import math
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -8,13 +8,46 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Batch, BatchStatus, Product, Supplier, User
+from app.models import (
+    Batch,
+    BatchStatus,
+    CustomerOrderItem,
+    Product,
+    PurchaseOrderItem,
+    ShoppingListItem,
+    Supplier,
+    SupplierContactLog,
+    User,
+)
 from app.schemas import BatchOut, ProductCreate, ProductImportResult, ProductOut, ProductUpdate, ShelfFillOut
 from app.security import require_employee, require_responsibility
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 NUTRITION_COLUMNS = ["kcal", "carbs_g", "fiber_g", "protein_g", "fat_g"]
+
+# A "full" shelf holds this many times a product's reorder point; fill is on-hand stock against that reference.
+SHELF_FULL_MULTIPLE = 6
+
+
+def assert_supplier(db: Session, supplier_id: str | None) -> None:
+    if supplier_id is not None and not db.get(Supplier, supplier_id):
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+
+def is_referenced(db: Session, product_id: str) -> bool:
+    """Stock, orders, shopping lists or supplier contacts that point at the product. Checked here rather than left
+    to the database so every engine (SQLite doesn't enforce foreign keys) answers the same."""
+    return any(
+        db.query(query.exists()).scalar()
+        for query in (
+            db.query(Batch).filter(Batch.product_id == product_id),
+            db.query(PurchaseOrderItem).filter(PurchaseOrderItem.product_id == product_id),
+            db.query(CustomerOrderItem).filter(CustomerOrderItem.product_id == product_id),
+            db.query(ShoppingListItem).filter(ShoppingListItem.product_id == product_id),
+            db.query(SupplierContactLog).filter(SupplierContactLog.product_id == product_id),
+        )
+    )
 
 
 @router.get("/products", response_model=list[ProductOut])
@@ -29,6 +62,9 @@ def list_products(category: str | None = None, db: Session = Depends(get_db), _:
 def create_product(payload: ProductCreate, db: Session = Depends(get_db), _: User = Depends(require_responsibility("Inventory Monitoring"))):
     if db.query(Product).filter(Product.sku == payload.sku).first():
         raise HTTPException(status_code=409, detail=f"SKU {payload.sku} already exists")
+    if payload.barcode and db.query(Product).filter(Product.barcode == payload.barcode).first():
+        raise HTTPException(status_code=409, detail=f"Barcode {payload.barcode} is already assigned to another product")
+    assert_supplier(db, payload.supplier_id)
     product = Product(**payload.model_dump())
     db.add(product)
     db.commit()
@@ -41,6 +77,7 @@ def update_product(product_id: str, payload: ProductUpdate, db: Session = Depend
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    assert_supplier(db, payload.supplier_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         if value is None and field not in ("cost_price", "supplier_id"):
             continue
@@ -55,28 +92,29 @@ def delete_product(product_id: str, db: Session = Depends(get_db), _: User = Dep
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    in_use = HTTPException(status_code=409, detail="Can't delete — this product has batches, orders, or purchase history referencing it")
+    if is_referenced(db, product.id):
+        raise in_use
     try:
         db.delete(product)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:  # a reference the check above doesn't know about (Postgres enforces it)
         db.rollback()
-        raise HTTPException(status_code=409, detail="Can't delete — this product has batches, orders, or purchase history referencing it")
+        raise in_use from exc
 
 
 @router.post("/products/import", response_model=ProductImportResult)
 def import_products(file: UploadFile, db: Session = Depends(get_db), _: User = Depends(require_responsibility("Inventory Monitoring"))):
-    """CSV import — the practical equivalent of a Google Sheets upload (File
-    > Download > Comma-separated values (.csv) in Sheets produces exactly
-    this format). Live Google Sheets API sync would need an OAuth app
-    registered under your Google account, which isn't something to set up
-    silently; CSV covers the same real workflow without that dependency.
+    """CSV import — the practical equivalent of a Google Sheets upload (File > Download > Comma-separated values
+    (.csv) in Sheets produces exactly this format).
 
-    Expected header row: sku,name,category,price (required) plus any of
-    barcode,unit,cost_price,reorder_threshold,supplier_name,allergens,
-    dietary_tags,kcal,carbs_g,fiber_g,protein_g,fat_g (optional). allergens/
-    dietary_tags are semicolon-separated within their cell. cost_price (the
-    landed unit cost, not the shelf price) drives real margin numbers in
-    Analytics → Profit & Loss — worth filling in even though it's optional.
+    Expected header row: sku,name,category,price (required) plus any of barcode,unit,cost_price,reorder_threshold,
+    supplier_name,allergens,dietary_tags,kcal,carbs_g,fiber_g,protein_g,fat_g (optional). allergens/dietary_tags
+    are semicolon-separated within their cell. cost_price (the landed unit cost, not the shelf price) drives the
+    margin numbers in Analytics → Profit & Loss — worth filling in even though it's optional.
+
+    A column that is in the file sets that field (a blank cell clears it); a column that is not in the file leaves
+    existing products alone, so a short re-import never wipes what an earlier, fuller one filled in.
     """
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=422, detail="Please upload a .csv file (export a Google Sheet as CSV, or any spreadsheet as CSV)")
@@ -85,11 +123,14 @@ def import_products(file: UploadFile, db: Session = Depends(get_db), _: User = D
     reader = csv.DictReader(io.StringIO(raw))
     if reader.fieldnames is None:
         raise HTTPException(status_code=422, detail="Empty file")
-    missing = {"sku", "name", "category", "price"} - {(f or "").strip().lower() for f in reader.fieldnames}
+    present = {(f or "").strip().lower() for f in reader.fieldnames}
+    missing = {"sku", "name", "category", "price"} - present
     if missing:
         raise HTTPException(status_code=422, detail=f"CSV is missing required column(s): {', '.join(sorted(missing))}")
 
     suppliers_by_name = {s.name.strip().lower(): s for s in db.query(Supplier).all()}
+    by_sku = {p.sku: p for p in db.query(Product).all()}
+    by_barcode = {p.barcode: p for p in by_sku.values() if p.barcode}
     created, updated, errors = 0, 0, []
 
     for i, row in enumerate(reader, start=2):  # row 1 is the header
@@ -110,13 +151,16 @@ def import_products(file: UploadFile, db: Session = Depends(get_db), _: User = D
             errors.append(f"Row {i}: name and category are required, skipped")
             continue
 
-        nutrition = {}
-        for col in NUTRITION_COLUMNS:
-            if row.get(col):
-                try:
-                    nutrition[col] = float(row[col])
-                except ValueError:
-                    pass
+        existing = by_sku.get(sku)
+        nutrition = dict(existing.nutrition or {}) if existing else {}
+        for col in (c for c in NUTRITION_COLUMNS if c in present):
+            if not row.get(col):
+                nutrition.pop(col, None)
+                continue
+            try:
+                nutrition[col] = float(row[col])
+            except ValueError:
+                pass
 
         cost_price = None
         if row.get("cost_price"):
@@ -128,25 +172,42 @@ def import_products(file: UploadFile, db: Session = Depends(get_db), _: User = D
                 errors.append(f"Row {i}: cost_price must be between 0 and 1,000,000, skipped")
                 continue
 
-        supplier = suppliers_by_name.get(row.get("supplier_name", "").lower()) if row.get("supplier_name") else None
-        fields = dict(
-            name=row["name"], category=row["category"], price=price, cost_price=cost_price,
-            barcode=row.get("barcode") or None,
-            unit=row.get("unit") or "each",
-            reorder_threshold=int(row["reorder_threshold"]) if row.get("reorder_threshold", "").isdigit() else 10,
-            supplier_id=supplier.id if supplier else None,
-            allergens=[a.strip() for a in row.get("allergens", "").split(";") if a.strip()],
-            dietary_tags=[t.strip() for t in row.get("dietary_tags", "").split(";") if t.strip()],
-            nutrition=nutrition,
-        )
+        owner = by_barcode.get(row["barcode"]) if row.get("barcode") else None
+        if owner and owner.sku != sku:
+            errors.append(f"Row {i}: barcode {row['barcode']} is already assigned to another product, skipped")
+            continue
 
-        existing = db.query(Product).filter(Product.sku == sku).first()
+        supplier = suppliers_by_name.get(row.get("supplier_name", "").lower()) if row.get("supplier_name") else None
+        fields = dict(name=row["name"], category=row["category"], price=price, nutrition=nutrition)
+        if "cost_price" in present:
+            fields["cost_price"] = cost_price
+        if "barcode" in present:
+            fields["barcode"] = row.get("barcode") or None
+        if "unit" in present:
+            fields["unit"] = row.get("unit") or "each"
+        if "reorder_threshold" in present:
+            fields["reorder_threshold"] = int(row["reorder_threshold"]) if row.get("reorder_threshold", "").isdigit() else 10
+        if "supplier_name" in present:
+            fields["supplier_id"] = supplier.id if supplier else None
+        if "allergens" in present:
+            fields["allergens"] = [a.strip() for a in row.get("allergens", "").split(";") if a.strip()]
+        if "dietary_tags" in present:
+            fields["dietary_tags"] = [t.strip() for t in row.get("dietary_tags", "").split(";") if t.strip()]
+
         if existing:
+            if existing.barcode and "barcode" in fields:
+                by_barcode.pop(existing.barcode, None)
             for k, v in fields.items():
                 setattr(existing, k, v)
+            if existing.barcode:
+                by_barcode[existing.barcode] = existing
             updated += 1
         else:
-            db.add(Product(sku=sku, **fields))
+            product = Product(sku=sku, **fields)
+            db.add(product)
+            by_sku[sku] = product
+            if product.barcode:
+                by_barcode[product.barcode] = product
             created += 1
 
     db.commit()
@@ -192,7 +253,7 @@ def shelf_fill(store_id: str, db: Session = Depends(get_db), _: User = Depends(r
         aisle = (batch.aisle_location or "Unassigned").split("·")[0].strip()
         entry = by_aisle.setdefault(aisle, {"current": 0, "capacity": 0, "category": product.category})
         entry["current"] += batch.quantity
-        entry["capacity"] += product.reorder_threshold * 15  # "full shelf" reference: 15x the reorder point
+        entry["capacity"] += product.reorder_threshold * SHELF_FULL_MULTIPLE
 
     out = []
     for aisle, v in sorted(by_aisle.items()):

@@ -1,8 +1,6 @@
 """
-Customer-facing endpoints (Modules 10/12): product browsing/scan, shopping
-list, checkout → digital receipts + loyalty points, offers, and a real (if
-simple) recommendation engine computed from actual order history rather
-than a fixed demo list.
+Customer-facing endpoints: product browsing and barcode scan, the shopping list, checkout → digital receipts and
+loyalty points, offers, and recommendations computed from actual order history.
 """
 from datetime import datetime
 
@@ -13,8 +11,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import CustomerOrder, CustomerOrderItem, Offer, Product, ShoppingListItem, Store, User
 from app.schemas import (
-    CheckoutRequest, CustomerOrderOut, OfferOut, ProductOut, RecommendationOut,
-    ShoppingListItemCreate, ShoppingListItemOut, ShoppingListItemUpdate,
+    CheckoutRequest,
+    CustomerOrderOut,
+    OfferOut,
+    ProductOut,
+    RecommendationOut,
+    ShoppingListItemCreate,
+    ShoppingListItemOut,
+    ShoppingListItemUpdate,
 )
 from app.security import require_customer
 from app.services.fulfillment import consume_stock, record_stock_shortfall
@@ -164,11 +168,9 @@ def list_offers(db: Session = Depends(get_db), _: User = Depends(require_custome
 
 @router.get("/recommendations", response_model=list[RecommendationOut])
 def recommendations(db: Session = Depends(get_db), user: User = Depends(require_customer)):
-    """Real, computed from this customer's own order history when they have
-    any — frequently-bought items plus other products in their top
-    categories. Falls back to store-wide order popularity, then to a plain
-    product sample, for a brand-new account with no history yet — never a
-    fixed demo list."""
+    """Computed from this customer's own order history when they have any — frequently-bought items plus other
+    products in their top categories. A brand-new account with no history falls back to store-wide order popularity,
+    then to the catalogue itself."""
     frequent = (
         db.query(CustomerOrderItem.product_id, func.sum(CustomerOrderItem.quantity).label("qty"))
         .join(CustomerOrder, CustomerOrder.id == CustomerOrderItem.order_id)

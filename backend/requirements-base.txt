@@ -1,0 +1,24 @@
+# The API and everything it needs to run on plain Python, without the heavy forecasting libraries. A forecasting
+# method whose library is missing answers 501; the rest of the API is unaffected.
+fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.12
+
+# Database: SQLite needs nothing extra; the PostgreSQL driver is here so DATABASE_URL can name a server.
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
+
+# Validation and settings
+pydantic[email]>=2.9
+pydantic-settings>=2.6
+
+# Auth
+python-jose[cryptography]>=3.3
+passlib[bcrypt]>=1.7
+# passlib 1.7.4's bcrypt backend probes `bcrypt.__about__`, which bcrypt dropped in 4.1 - pin below that so
+# password hashing doesn't crash.
+bcrypt<4.1
+
+# Sales history and the forecasting frames
+pandas>=2.2
+numpy>=1.26
