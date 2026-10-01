@@ -1,5 +1,10 @@
 # RetailMind
 
+[![CI](https://github.com/paulelisha500-ops/retailmind/actions/workflows/ci.yml/badge.svg)](https://github.com/paulelisha500-ops/retailmind/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/paulelisha500-ops/retailmind/actions/workflows/codeql.yml/badge.svg)](https://github.com/paulelisha500-ops/retailmind/actions/workflows/codeql.yml)
+[![Live on GitHub Pages](https://img.shields.io/badge/live-GitHub%20Pages-2e7d4f)](https://paulelisha500-ops.github.io/retailmind/)
+[![Live on Hugging Face](https://img.shields.io/badge/live-Hugging%20Face-ffd21e)](https://huggingface.co/spaces/Elisha622/retailmind)
+
 Forecasting, procurement, shelf alerts, a register with loyalty, warehouse planning, analytics with profit and
 loss, and a customer app — one retail operations console that **runs entirely in your browser**.
 
@@ -9,8 +14,8 @@ loss, and a customer app — one retail operations console that **runs entirely 
 
 There is no server to wait for and no account to create. The whole backend — database, sign-in, permissions,
 forecasting — is part of the page, so the same files host for free on GitHub Pages, a Hugging Face static
-Space, or any static host. A server edition (FastAPI and PostgreSQL) serves the same interface for teams that
-want one shared database.
+Space, or any static host. A server edition (FastAPI on SQLite or PostgreSQL) serves the same interface for teams that
+want one shared database. Nothing here needs Docker.
 
 ## What it does
 
@@ -87,6 +92,8 @@ machine; they are not a promise about any particular phone.
   `scripts/coverage-gate.mjs` fails the build unless **each one — and each one ever rendered — was exercised**.
 - **Accessibility**: axe-core (WCAG 2.1 A and AA plus best practice) audits every screen in light and dark, the
   dialogs and error states, and the phone layout.
+- **Server edition**: backend tests pin the same contract the browser engine is tested against, on SQLite and on
+  PostgreSQL, and the real Prophet, XGBoost and PyTorch forecasters run in their own workflow.
 - CI (`.github/workflows/ci.yml`) lints, runs all of the above, and publishes the build that passed to GitHub Pages.
 
 ## Run it
@@ -100,24 +107,55 @@ npm run test:e2e     # builds, serves and drives the production bundle
 npm run build        # frontend/dist: static files for any host
 ```
 
-**Server edition** (shared PostgreSQL database, real forecasting libraries):
+**Server edition** (one shared database, real forecasting libraries). It needs Python, not Docker:
 
 ```bash
-cp .env.example .env            # set JWT_SECRET (openssl rand -hex 32)
-docker compose up -d            # PostgreSQL, Redis and the API → http://localhost:8002/docs
-cd frontend && npm run dev:server
+cd backend
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -r requirements-base.txt                  # or requirements.txt, to add Prophet, XGBoost and PyTorch
+cp .env.example .env                                  # set JWT_SECRET: python -c "import secrets; print(secrets.token_hex(32))"
+python -m app.seed && uvicorn app.main:app --port 8002   # a local SQLite file; http://localhost:8002/docs
+cd ../frontend && npm run dev:server
 ```
 
+PostgreSQL works too (set `DATABASE_URL`), and `docker compose up -d` is there if you would rather have containers.
 See [`backend/README.md`](backend/README.md) for the API and its configuration.
 
-## Deploy
+## CI/CD
+
+Everything below runs on free tiers: GitHub-hosted runners (free for public repositories), GitHub Pages, and a
+static Hugging Face Space.
+
+```
+push / pull request ─► build: lint · unit tests · production build ──┐
+                                                                      ├─► 3 test shards: desktop, phone, offline, accessibility
+                                                                      │       │
+                              every control exercised? (the gate) ◄───┘       │
+                                          │                                   │
+   push to main only ─────────────────────┴─► GitHub Pages  ─► check the live files match the tested build
+                                          └─► Hugging Face  ─► check the live files match the tested build
+```
+
+- **One build, tested and shipped.** The site is built once; the test shards run against that artifact and the deploy
+  jobs publish that same artifact, then download the live files and compare them byte for byte
+  (`deploy/verify_live.py`).
+- **Pull requests** run everything except publishing, with sharded browser tests (about 4 minutes of wall time).
+- **Security:** CodeQL on every push and weekly, Dependabot for npm, pip, Docker and the workflows themselves.
+- **Releases:** pushing a tag like `v1.2.0` attaches the built site to a GitHub release with generated notes.
+- **Hugging Face from CI** needs one secret: a write token saved as the `HF_TOKEN` repository secret
+  (Settings → Secrets and variables → Actions). Without it that job reports a notice and is skipped.
+
+## Deploy by hand
 
 | Where | How |
 |---|---|
-| GitHub Pages | Automatic: a push to `main` that passes CI publishes `frontend/dist`. |
-| Hugging Face Space | `cd frontend && npm run build && cd .. && python deploy/hf_space.py` publishes a static Space (free; uses the token from `hf auth login`). |
+| GitHub Pages | Automatic from CI. Manually: `python deploy/github_pages.py` pushes `frontend/dist` to the `gh-pages` branch. |
+| Hugging Face Space | `cd frontend && npm run build && cd .. && python deploy/hf_space.py` publishes a static Space (free; uses the token from `hf auth login`). `python deploy/hf_mirror.py` keeps the source repo beside it in step. |
 | Any static host | Upload `frontend/dist` — the build uses relative paths, so it works at a domain root or under a sub-path. |
 | Docker Space (server edition) | `deploy/docker-space/` packages the API, PostgreSQL and console in one container. Hugging Face only runs Docker Spaces on paid hardware, so the static Space is the free route. |
+
+After any deployment, `python deploy/verify_live.py <url>` confirms the live site serves exactly the files in
+`frontend/dist`.
 
 ## Limits worth knowing
 
@@ -135,6 +173,8 @@ See [`backend/README.md`](backend/README.md) for the API and its configuration.
 ```
 frontend/   the app — React, the in-browser engine (src/engine), tests, build scripts
 backend/    the server edition — FastAPI, PostgreSQL, Prophet, XGBoost, PyTorch
-deploy/     publishing: Hugging Face static Space, and the Docker Space kit
-.github/    CI and GitHub Pages
+deploy/     publishing: Hugging Face Space and mirror, GitHub Pages, live-site check, the Docker Space kit
+.github/    CI/CD, CodeQL, release and Dependabot configuration, issue and pull-request templates
 ```
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
