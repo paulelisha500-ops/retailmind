@@ -42,7 +42,7 @@ export function Empty({ icon: Icon, children }) {
 }
 
 export const Skeleton = ({ lines = 3, block }) => (
-  <div aria-busy="true" aria-label="Loading">
+  <div role="status" aria-busy="true" aria-label="Loading">
     {block && <div className="skeleton skeleton-block" />}
     {Array.from({ length: lines }, (_, i) => <div key={i} className="skeleton skeleton-line" style={{ width: `${92 - ((i * 17) % 38)}%` }} />)}
   </div>
@@ -50,10 +50,11 @@ export const Skeleton = ({ lines = 3, block }) => (
 
 export const CardSkeleton = ({ lines = 3 }) => <div className="card"><Skeleton lines={lines} /></div>;
 
-export function Meter({ pct, tone }) {
+/** A progress bar. `label` is what it measures ("Aisle 02 fill"), read out with the value. */
+export function Meter({ pct, tone, label }) {
   const color = tone === "red" ? "var(--red)" : tone === "amber" ? "var(--amber)" : undefined;
   return (
-    <div className="meter" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+    <div className="meter" role="progressbar" aria-label={label} aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
       <div className="meter__fill" style={{ transform: `scaleX(${Math.max(0, Math.min(100, pct)) / 100})`, background: color }} />
     </div>
   );

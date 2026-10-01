@@ -62,7 +62,7 @@ function Overview({ enterprise, storeId, token }) {
           {s.waste_by_category.length === 0 ? <Empty>No waste recorded yet — this needs batches marked as removed.</Empty> : s.waste_by_category.map((w) => (
             <div key={w.name} className="waste">
               <span className="waste__name">{w.name}</span>
-              <Meter pct={w.pct == null ? 0 : Math.min(100, w.pct * 12)} tone="amber" />
+              <Meter pct={w.pct == null ? 0 : Math.min(100, w.pct * 12)} tone="amber" label={`${w.name} waste`} />
               <span className="waste__pct num">{w.pct == null ? "—" : `${w.pct}%`}</span>
             </div>
           ))}
@@ -138,7 +138,7 @@ function ProfitLoss({ enterprise, storeId, token }) {
                 <span className="list-row__main">
                   <span className="row between"><span className="list-row__title">{c.category}</span><b className="num">{c.margin_pct}%</b></span>
                   <span className="list-row__detail" style={{ display: "block", marginBottom: 6 }}>{aed(c.revenue, 0)} revenue · {aed(c.cogs, 0)} COGS</span>
-                  <Meter pct={Math.max(0, Math.min(100, c.margin_pct))} />
+                  <Meter pct={Math.max(0, Math.min(100, c.margin_pct))} label={`${c.category} margin`} />
                 </span>
               </ListRow>
             ))}
@@ -154,7 +154,7 @@ function ProfitLoss({ enterprise, storeId, token }) {
                 <span className="list-row__main">
                   <span className="row between"><span className="list-row__title">{s.store_name} <span className="muted">{s.store_code}</span></span><b className="num">{s.margin_pct}%</b></span>
                   <span className="list-row__detail" style={{ display: "block", marginBottom: 6 }}>{aed(s.revenue, 0)} revenue · {aed(s.cogs, 0)} COGS</span>
-                  <Meter pct={Math.max(0, Math.min(100, s.margin_pct))} />
+                  <Meter pct={Math.max(0, Math.min(100, s.margin_pct))} label={`${s.store_name} margin`} />
                 </span>
               </ListRow>
             ))}

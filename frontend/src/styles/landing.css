@@ -19,7 +19,7 @@
 .l-h2 { font: 700 clamp(28px, 3.6vw, 40px)/1.1 var(--font-display); letter-spacing: -0.03em; margin-bottom: 12px; }
 .l-h2--light { color: #fff; }
 .l-lead { font-size: 17px; line-height: 1.55; color: var(--label-2); max-width: 520px; margin-bottom: 26px; }
-.l-lead--light { color: rgba(255, 255, 255, 0.78); margin-bottom: 0; }
+.l-lead--light { color: rgba(255, 255, 255, 0.88); margin-bottom: 0; }
 .l-p { color: var(--label-2); font-size: 16px; line-height: 1.6; }
 .l-stats { display: flex; gap: 32px; flex-wrap: wrap; margin: 26px 0 0; }
 .l-stats div { display: flex; flex-direction: column-reverse; }
@@ -73,8 +73,8 @@
 .l-list li { position: relative; padding-left: 22px; }
 .l-list li::before { content: ""; position: absolute; left: 4px; top: 0.55em; width: 7px; height: 7px; border-radius: 50%; background: var(--tint); }
 .l-faq { max-width: 760px; margin: 0 auto; }
-.l-cta { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; max-width: 1132px; margin: 12px auto 56px; padding: 40px 44px; border-radius: 28px; background: var(--tint-strong); color: #fff; }
+.l-cta { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; max-width: 1132px; margin: 12px auto 56px; padding: 40px 44px; border-radius: 28px; background: var(--tint-fill-strong); color: #fff; }
 @media (max-width: 1180px) { .l-cta { margin-left: 24px; margin-right: 24px; } }
 @media (max-width: 720px) { .l-cta { margin: 6px 18px 40px; padding: 28px 22px; } }
-.l-cta__btn { color: var(--tint-strong); background: #fff; }
+.l-cta__btn { color: var(--tint-fill-strong); background: #fff; }
 .l-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; max-width: 1180px; margin: 0 auto; padding: 26px 24px calc(var(--safe-bottom) + 38px); border-top: 0.5px solid var(--separator); }

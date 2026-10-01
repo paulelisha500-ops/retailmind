@@ -248,7 +248,7 @@ export default function Procurement({ onNav }) {
                         </div>
                         <div className="score"><b>{s.performance_score}</b><span>score</span></div>
                       </div>
-                      <Meter pct={s.performance_score} />
+                      <Meter pct={s.performance_score} label={`${s.name} performance score`} />
                       <div className="row gap-2 wrap mt-3">
                         <Tag tone={onboardingTone(s.onboarding_status)}>{statusLabel(s.onboarding_status)}</Tag>
                         <Tag tone={s.on_time_pct >= 95 ? "green" : s.on_time_pct >= 88 ? "amber" : "red"}>{Math.round(s.on_time_pct)}% on-time</Tag>

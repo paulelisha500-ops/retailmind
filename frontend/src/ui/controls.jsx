@@ -1,7 +1,7 @@
 // Interactive primitives. Every one takes a `tid` — a stable id the test suite uses to prove that
 // each control on every screen has been exercised (see scripts/interactive-census.mjs).
 import { Check as CheckIcon, Minus, Plus } from "lucide-react";
-import { forwardRef } from "react";
+import { Children, cloneElement, forwardRef, isValidElement, useId } from "react";
 
 const cx = (...parts) => parts.filter(Boolean).join(" ");
 
@@ -73,12 +73,29 @@ export function Chip({ active, tid, icon: Icon, children, ...rest }) {
   );
 }
 
+const isTextControl = (node) => isValidElement(node) && (node.type === Input || node.type === Select || node.type === IconInput || ["input", "select", "textarea"].includes(node.type));
+
+/**
+ * A labelled form row. The label is tied to the control automatically (the first input, select or text area inside),
+ * so screen readers announce "Department, combo box" rather than an unnamed control, and clicking the label focuses
+ * it. A row holding something else — a group of chips — is labelled as a group instead; a Segmented control already
+ * carries its own name. The hint is attached as the control's description.
+ */
 export function Field({ label, hint, htmlFor, children }) {
+  const uid = useId();
+  const labelId = `${uid}-label`;
+  const hintId = `${uid}-hint`;
+  const items = Children.toArray(children);
+  const target = items.find(isTextControl);
+  const controlId = htmlFor ?? target?.props.id ?? `${uid}-control`;
+  const named = items.some((node) => isValidElement(node) && node.type === Segmented);
+  const labelsGroup = label && !target && !htmlFor && !named;
+
   return (
-    <div className="field">
-      {label && <label className="field__label" htmlFor={htmlFor}>{label}</label>}
-      {children}
-      {hint && <div className="hint">{hint}</div>}
+    <div className="field" role={labelsGroup ? "group" : undefined} aria-labelledby={labelsGroup ? labelId : undefined}>
+      {label && <label id={labelId} className="field__label" htmlFor={target || htmlFor ? controlId : undefined}>{label}</label>}
+      {items.map((node) => (node === target ? cloneElement(node, { id: controlId, "aria-describedby": hint ? hintId : node.props["aria-describedby"] }) : node))}
+      {hint && <div id={hintId} className="hint">{hint}</div>}
     </div>
   );
 }

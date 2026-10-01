@@ -34,7 +34,7 @@ export default function Warehouse({ onNav }) {
             {zones.data.map((z) => (
               <div key={z.id}>
                 <div className="row between mb-2"><span className="strong">{z.name}</span><Tag tone={z.pct >= 90 ? "red" : z.pct >= 75 ? "amber" : "green"}>{z.pct}%</Tag></div>
-                <Meter pct={z.pct} tone={z.pct >= 90 ? "red" : z.pct >= 75 ? "amber" : undefined} />
+                <Meter pct={z.pct} tone={z.pct >= 90 ? "red" : z.pct >= 75 ? "amber" : undefined} label={`${z.name} utilisation`} />
                 <div className="t-foot mt-1">{z.current_units.toLocaleString()} of {z.capacity_units.toLocaleString()} units</div>
               </div>
             ))}

@@ -109,7 +109,7 @@ export function XYChart({ categories, series, band, regionFrom, height = 190, yF
   return (
     <div ref={ref} className="xy" style={{ height }}>
       {geometry && (
-        <svg width={width} height={height} role="img" aria-label={label} className="xy__svg">
+        <svg width={width} height={height} role="group" aria-label={label} className="xy__svg">
           <defs>
             <clipPath id={`clip-${uid}`}><rect x={M.left} y={0} width={geometry.plotW} height={height} /></clipPath>
           </defs>

@@ -26,7 +26,7 @@ export default function SignIn({ onBack }) {
   }
 
   return (
-    <div className="auth">
+    <main className="auth">
       <div className="auth__card">
         <button type="button" className="back-btn" data-tid="signin.back" onClick={onBack}><ChevronLeft size={18} aria-hidden="true" />Back</button>
 
@@ -69,6 +69,6 @@ export default function SignIn({ onBack }) {
             : "You're signing in to your RetailMind server."}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

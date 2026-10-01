@@ -17,6 +17,11 @@
   --tint-strong: #1f6b41;
   --tint-soft: rgba(46, 125, 79, 0.12);
   --on-tint: #ffffff;
+  /* Backgrounds that carry white text or icons. The same green in both themes: --tint turns lighter in dark mode so
+     it reads on black, and white on that lighter green would fall below 4.5:1. */
+  --tint-fill: #2e7d4f;
+  --tint-fill-strong: #1f6b41;
+  --red-fill: #d32f24; /* white text on red: --red turns lighter in dark mode and would fall below 4.5:1 */
 
   /* surfaces */
   --bg: #f2f2f7;
@@ -38,7 +43,7 @@
 
   /* status colours: ink (text) + soft (background) */
   --green: #2e7d4f;       --green-soft: rgba(46, 125, 79, 0.13);   --green-ink: #1b6a3f;
-  --amber: #e08a00;       --amber-soft: rgba(255, 149, 0, 0.15);   --amber-ink: #a45600;
+  --amber: #e08a00;       --amber-soft: rgba(255, 149, 0, 0.15);   --amber-ink: #8f4b00;
   --red: #e0372c;         --red-soft: rgba(255, 59, 48, 0.12);     --red-ink: #b92318;
   --blue: #0a7aff;        --blue-soft: rgba(10, 122, 255, 0.12);   --blue-ink: #0a5fc4;
   --plum: #a04bd0;        --plum-soft: rgba(175, 82, 222, 0.12);   --plum-ink: #7d36a6;

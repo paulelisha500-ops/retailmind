@@ -120,7 +120,7 @@ export default function Monitoring() {
                 <div key={f.location} className="fill">
                   <div className="row between"><span className="strong">{f.location}</span><Tag tone={tone}>{f.pct}%</Tag></div>
                   <div className="t-foot mb-2">{f.category}</div>
-                  <Meter pct={f.pct} tone={tone === "green" ? undefined : tone} />
+                  <Meter pct={f.pct} tone={tone === "green" ? undefined : tone} label={`${f.location} fill`} />
                 </div>
               );
             })}

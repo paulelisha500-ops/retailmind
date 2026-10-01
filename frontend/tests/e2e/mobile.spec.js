@@ -1,4 +1,5 @@
 // Runs in the "mobile" project (390 × 844, touch): the phone layout — tab bar, bottom sheets, no sideways scroll.
+import AxeBuilder from "@axe-core/playwright";
 import { expect, signInAs, test, tid } from "./fixtures.js";
 
 const h1 = (page, name) => page.getByRole("heading", { level: 1, name });
@@ -146,4 +147,38 @@ test.describe("touch", () => {
     await Promise.all([page.waitForEvent("load"), tid(page, "app.update-reload").tap()]);
     await expect(h1(page, /Hi, Layla/)).toBeVisible();
   });
+});
+
+test.describe("accessibility on a phone", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  async function audit(page, where) {
+    await page.waitForLoadState("networkidle");
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"]).analyze();
+    expect(violations.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`), `accessibility violations on ${where}`).toEqual([]);
+  }
+
+  for (const scheme of ["light", "dark"]) {
+    test(`the tab bar, screens and a sheet pass the audit (${scheme})`, async ({ browser }) => {
+      const context = await browser.newContext({ colorScheme: scheme, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: "reduce" });
+      const page = await context.newPage();
+      await page.goto("/");
+      await expect(h1(page, /Every aisle, every shelf/)).toBeVisible();
+      await audit(page, "the landing page on a phone");
+
+      await signInAs(page, "admin");
+      for (const route of ["home", "cashier", "monitoring", "forecast", "team", "profile"]) {
+        await tid(page, `tab.${route}`).tap();
+        await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+        await page.waitForTimeout(500);
+        await audit(page, `admin ${route} on a phone`);
+      }
+      await tid(page, "tab.home").tap();
+      await tid(page, "home.bell").tap();
+      await expect(page.getByRole("dialog", { name: "Notifications" })).toBeVisible();
+      await page.waitForTimeout(500);
+      await audit(page, "a bottom sheet on a phone");
+      await context.close();
+    });
+  }
 });
