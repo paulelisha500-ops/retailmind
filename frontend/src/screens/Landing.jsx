@@ -2,13 +2,15 @@ import {
   ArrowRight, BarChart3, Boxes, ChevronRight, Github, Leaf, ShoppingCart, ShieldCheck, TrendingUp, Truck, Users, Video,
 } from "lucide-react";
 import { EDITION } from "../api.js";
-import { Button } from "../ui/controls.jsx";
-import { NumberTicker } from "../ui/display.jsx";
+import { ButtonLink } from "../ui/controls.jsx";
 import "../styles/landing.css";
 
 const REPO = "https://github.com/paulelisha500-ops/retailmind";
 
-const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+// Everything on this page works before any script has loaded (it is pre-rendered into index.html): the calls to
+// action are links to the sign-in screen, FAQ items are <details>, and the section links carry a data-scroll
+// target that a small handler in index.html acts on.
+const ENTER = "#/sign-in";
 
 const NAV = [["platform", "Platform"], ["roles", "Roles"], ["editions", "Editions"], ["faq", "FAQ"]];
 
@@ -69,18 +71,18 @@ function HeroVisual() {
   );
 }
 
-export default function Landing({ onEnter }) {
+export default function Landing() {
   return (
     <div className="landing">
       <header className="l-nav">
         <div className="l-nav__inner">
           <div className="row gap-3"><div className="brand__mark"><Leaf size={18} aria-hidden="true" /></div><span className="l-nav__name">RetailMind</span></div>
           <nav className="l-nav__links" aria-label="Sections">
-            {NAV.map(([id, label]) => <button key={id} type="button" className="l-link" data-tid={`landing.nav.${id}`} onClick={() => scrollTo(id)}>{label}</button>)}
+            {NAV.map(([id, label]) => <button key={id} type="button" className="l-link" data-tid={`landing.nav.${id}`} data-scroll={id}>{label}</button>)}
           </nav>
           <div className="row gap-2">
-            <Button variant="plain" size="sm" tid="landing.nav.sign-in" onClick={onEnter}>Sign in</Button>
-            <Button size="sm" tid="landing.nav.open" onClick={onEnter}>Open console</Button>
+            <ButtonLink href={ENTER} variant="plain" size="sm" tid="landing.nav.sign-in">Sign in</ButtonLink>
+            <ButtonLink href={ENTER} size="sm" tid="landing.nav.open">Open console</ButtonLink>
           </div>
         </div>
       </header>
@@ -92,13 +94,13 @@ export default function Landing({ onEnter }) {
             <h1 className="l-h1">Every aisle, every shelf, <span>predicted.</span></h1>
             <p className="l-lead">RetailMind forecasts demand, flags shrink, routes procurement and keeps every store team a step ahead — for the people who run the floor and the people who shop it.</p>
             <div className="row gap-3 wrap mb-4">
-              <Button size="lg" tid="landing.hero.open" onClick={onEnter}>Open the console<ArrowRight size={18} aria-hidden="true" /></Button>
-              <Button size="lg" variant="gray" tid="landing.hero.sign-in" onClick={onEnter}>Sign in</Button>
+              <ButtonLink href={ENTER} size="lg" tid="landing.hero.open">Open the console<ArrowRight size={18} aria-hidden="true" /></ButtonLink>
+              <ButtonLink href={ENTER} size="lg" variant="gray" tid="landing.hero.sign-in">Sign in</ButtonLink>
             </div>
             <dl className="l-stats">
-              <div><dt>Forecasting methods</dt><dd><NumberTicker value={4} /></dd></div>
-              <div><dt>Payment tenders</dt><dd><NumberTicker value={6} /></dd></div>
-              <div><dt>Roles</dt><dd><NumberTicker value={4} /></dd></div>
+              <div><dt>Forecasting methods</dt><dd>4</dd></div>
+              <div><dt>Payment tenders</dt><dd>6</dd></div>
+              <div><dt>Roles</dt><dd>4</dd></div>
             </dl>
           </div>
           <HeroVisual />
@@ -137,7 +139,7 @@ export default function Landing({ onEnter }) {
               <span className="tag tag--green">Browser edition</span>
               <h3 className="t-title">Nothing to install</h3>
               <ul className="l-list"><li>Runs entirely in your browser — no server, no sign-up</li><li>Workspace saved on your device and works offline</li><li>Hosted free on GitHub Pages and Hugging Face</li></ul>
-              <Button tid="landing.editions.open" onClick={onEnter}>Open the console<ChevronRight size={17} aria-hidden="true" /></Button>
+              <ButtonLink href={ENTER} tid="landing.editions.open">Open the console<ChevronRight size={17} aria-hidden="true" /></ButtonLink>
             </article>
             <article className="card l-edition">
               <span className="tag tag--blue">Server edition</span>
@@ -159,7 +161,7 @@ export default function Landing({ onEnter }) {
 
         <section className="l-cta">
           <div><h2 className="l-h2 l-h2--light">Ready to see it run?</h2><p className="l-lead l-lead--light">Open the console and pick a role — every screen is live.</p></div>
-          <Button size="lg" variant="gray" className="l-cta__btn" tid="landing.cta.open" onClick={onEnter}>Open the console<ArrowRight size={18} aria-hidden="true" /></Button>
+          <ButtonLink href={ENTER} size="lg" variant="gray" className="l-cta__btn" tid="landing.cta.open">Open the console<ArrowRight size={18} aria-hidden="true" /></ButtonLink>
         </section>
       </main>
 
@@ -167,7 +169,7 @@ export default function Landing({ onEnter }) {
         <div className="row gap-3"><div className="brand__mark"><Leaf size={16} aria-hidden="true" /></div><div><div className="strong">RetailMind</div><div className="t-foot">Fresh operations, predicted.</div></div></div>
         <div className="row gap-4 wrap">
           <a className="l-link" href={REPO} target="_blank" rel="noopener noreferrer" data-tid="landing.footer.source">Source on GitHub</a>
-          <button type="button" className="l-link" data-tid="landing.footer.sign-in" onClick={onEnter}>Sign in</button>
+          <a className="l-link" href={ENTER} data-tid="landing.footer.sign-in">Sign in</a>
         </div>
       </footer>
     </div>

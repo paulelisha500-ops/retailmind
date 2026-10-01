@@ -21,11 +21,12 @@ body {
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
 }
 
 #root { min-height: 100vh; min-height: 100dvh; }
+/* The landing page is pre-rendered into #root; a visit that opens somewhere else shouldn't flash it. */
+html[data-boot="app"] #root[data-prerendered] > * { display: none; }
 
 button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 button { cursor: pointer; touch-action: manipulation; }

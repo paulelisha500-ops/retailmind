@@ -16,8 +16,18 @@
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <script>
-      // Apply a saved light/dark choice before first paint so there is no flash.
+      // Before first paint: apply a saved light/dark choice (no flash), and note a visit that won't show the
+      // landing page (a saved session, or a link to a screen) so the pre-rendered landing page stays hidden.
       try { var t = localStorage.getItem("retailmind_theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+      try { if (localStorage.getItem("retailmind_token") || (location.hash && location.hash !== "#" && location.hash !== "#/")) document.documentElement.setAttribute("data-boot", "app"); } catch (e) {}
+    </script>
+    <script>
+      // The landing page's section links work from the first paint, before (and independent of) the app's script.
+      document.addEventListener("click", function (e) {
+        var link = e.target.closest && e.target.closest("[data-scroll]");
+        var target = link && document.getElementById(link.getAttribute("data-scroll"));
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     </script>
   </head>
   <body>

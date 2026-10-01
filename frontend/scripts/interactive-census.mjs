@@ -23,7 +23,7 @@ const ROLES = new Set(["button", "slider", "switch", "tab", "checkbox", "menuite
 
 /** Shared controls → the extra ids they render from their `tid` prop (besides `tid` itself). */
 const COMPONENTS = {
-  Button: [""], IconButton: [""], Switch: [""], Check: [""], Chip: [""], Input: [""], Select: [""], IconInput: [""],
+  Button: [""], ButtonLink: [""], IconButton: [""], Switch: [""], Check: [""], Chip: [""], Input: [""], Select: [""], IconInput: [""],
   Segmented: [".*"], Stepper: [".minus", ".plus"], XYChart: [".scrub"], Donut: [".legend"],
   Sheet: [".backdrop", ".close"], ConfirmSheet: [".backdrop", ".close", ".cancel", ".confirm"],
   ListRow: [""], // only when it has an onClick

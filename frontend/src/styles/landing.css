@@ -48,6 +48,9 @@
 @media (max-width: 520px) { .hv-forecast { width: 78%; } .hv-alert { width: 62%; top: 38%; } .hv-tasks { width: 70%; left: 0; } .hv-kpi { display: none; } .hero-visual { min-height: 400px; } }
 
 .l-section { max-width: 1180px; margin: 0 auto; padding: 56px 24px; scroll-margin-top: 64px; }
+/* Everything below the hero is skipped by layout and paint until it nears the viewport, which keeps the first
+   frame cheap (the first text layout is the expensive one). `auto` remembers each section's real height once seen. */
+.l-section, .l-cta, .l-footer { content-visibility: auto; contain-intrinsic-size: auto 520px; }
 @media (max-width: 720px) { .l-section { padding: 38px 18px; } }
 .l-head { text-align: center; max-width: 640px; margin: 0 auto 34px; }
 .l-head .pill { margin-bottom: 14px; }

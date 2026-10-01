@@ -37,7 +37,7 @@ export function useMediaQuery(query) {
 
 /** Hash-based routing: deep links and the browser's back button work on any static host. */
 export function useHashRoute() {
-  const read = () => window.location.hash.replace(/^#/, "") || "/";
+  const read = () => (typeof window === "undefined" ? "/" : window.location.hash.replace(/^#/, "") || "/");
   const [path, setPath] = useState(read);
   useEffect(() => {
     const onChange = () => setPath(read());

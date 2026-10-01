@@ -14,6 +14,15 @@ export function Button({ variant = "fill", size, block, loading, icon: Icon, tid
   );
 }
 
+/** A link that looks like a Button. For places that must work before any JavaScript has loaded (the landing page). */
+export function ButtonLink({ href, variant = "fill", size, tid, className, children, ...rest }) {
+  return (
+    <a href={href} data-tid={tid} className={cx("btn", `btn--${variant}`, size && `btn--${size}`, className)} {...rest}>
+      {children}
+    </a>
+  );
+}
+
 export function IconButton({ label, tid, plain, className, children, ...rest }) {
   return (
     <button type="button" aria-label={label} title={label} data-tid={tid} className={cx("icon-btn", plain && "icon-btn--plain", className)} {...rest}>

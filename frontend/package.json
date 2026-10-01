@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "vite --mode server",
-    "build": "vite build",
-    "build:server": "vite build --mode server",
+    "build": "vite build && node scripts/prerender.mjs",
+    "build:server": "vite build --mode server && node scripts/prerender.mjs --mode server",
     "preview": "vite preview --port 4173",
     "test": "vitest run",
     "test:e2e": "playwright test",

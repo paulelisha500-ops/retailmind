@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/components.css";
@@ -7,11 +7,27 @@ import "./styles/shell.css";
 import "./styles/screens.css";
 import App from "./App.jsx";
 
-createRoot(document.getElementById("root")).render(
+function savedSession() {
+  try { return !!localStorage.getItem("retailmind_token"); } catch { return false; }
+}
+
+const container = document.getElementById("root");
+const app = (
   <StrictMode>
     <App />
-  </StrictMode>,
+  </StrictMode>
 );
+// The build places the landing page's HTML in #root. A visit that shows the landing page adopts it (hydrates);
+// a visit that doesn't (saved session, deep link: index.html marks those data-boot="app") renders from scratch.
+// "Where the visit is" is read now, not at page start: a link on the pre-rendered page may already have been used.
+const onLanding = (!location.hash || location.hash === "#" || location.hash === "#/") && !savedSession();
+if (container.hasAttribute("data-prerendered") && onLanding) {
+  hydrateRoot(container, app);
+} else {
+  container.removeAttribute("data-prerendered"); // it was only a marker for the rule that hides the landing page
+  container.replaceChildren();
+  createRoot(container).render(app);
+}
 
 // Offline-first: cache the app shell so repeat visits open instantly (production builds only).
 if ("serviceWorker" in navigator && import.meta.env.PROD) {

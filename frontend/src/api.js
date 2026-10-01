@@ -33,7 +33,8 @@ function formatDetail(detail) {
   return "Request failed";
 }
 
-if (EDITION === "browser") {
+// (Skipped when the landing page is rendered to HTML at build time: there is no page, and no workspace, then.)
+if (EDITION === "browser" && typeof window !== "undefined") {
   warmEngine(); // start loading the workspace before the first request needs it
   // Changes are saved a moment after they happen; make sure nothing is left waiting when the page goes away.
   addEventListener("pagehide", flushEngine);

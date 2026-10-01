@@ -132,7 +132,7 @@ function Root() {
   if (booting) {
     return <div className="boot" role="status" aria-label="Restoring your session"><div className="brand__mark"><Leaf size={22} aria-hidden="true" /></div></div>;
   }
-  if (!me) return route === "/sign-in" ? <SignIn onBack={() => navigate("/")} /> : <Landing onEnter={() => navigate("/sign-in")} />;
+  if (!me) return route === "/sign-in" ? <SignIn onBack={() => navigate("/")} /> : <Landing />;
   return <Shell screenId={route.replace(/^\//, "").split("?")[0] || "home"} navigate={navigate} />;
 }
 
