@@ -4,6 +4,9 @@ const h1 = (page, name) => page.getByRole("heading", { level: 1, name });
 const toast = (page, text) => page.locator(".toast", { hasText: text }).last();
 
 // A 1×1 PNG, served in place of a real camera stream.
+// The stand-in IP camera. A page served over https can't show an http:// picture, so the browser upgrades the
+// request to https; matching both schemes keeps the test the same on a deployed site as on the local build.
+const CAMERA = /^https?:\/\/camera\.test\//;
 const PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 
 test.describe("home", () => {
@@ -111,7 +114,7 @@ test.describe("monitoring", () => {
   });
 
   test("the camera source can be off, this device, or an IP camera — and is remembered", async ({ page }) => {
-    await page.route("http://camera.test/**", (route) => route.fulfill({ contentType: "image/png", body: PIXEL }));
+    await page.route(CAMERA, (route) => route.fulfill({ contentType: "image/png", body: PIXEL }));
 
     // This device (a synthetic camera stands in for a webcam).
     await tid(page, "monitoring.camera.webcam").click();
@@ -144,7 +147,7 @@ test.describe("monitoring", () => {
   test.describe("an unreachable stream", () => {
     test.use({ allowedErrors: ["Failed to load resource"] });
     test("is explained instead of showing a broken picture", async ({ page }) => {
-      await page.route("http://camera.test/**", (route) => route.abort());
+      await page.route(CAMERA, (route) => route.abort());
       await tid(page, "monitoring.camera.url").click();
       await tid(page, "monitoring.camera-url").fill("http://camera.test/offline.mjpg");
       await tid(page, "monitoring.camera-save").click();

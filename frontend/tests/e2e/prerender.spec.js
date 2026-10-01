@@ -23,7 +23,7 @@ async function watchForLandingFlash(page) {
 
 test.describe("pre-rendered landing page", () => {
   test("is in the HTML the server sends, not built by script", async ({ request }) => {
-    const html = await (await request.get("/")).text();
+    const html = await (await request.get("./")).text();
     expect(html).toContain('<div id="root" data-prerendered>');
     expect(html).toContain("Every aisle, every shelf");
     expect(html).toContain("Open the console");
@@ -33,7 +33,7 @@ test.describe("pre-rendered landing page", () => {
   test.describe("without JavaScript", () => {
     test.use({ javaScriptEnabled: false });
     test("still shows the page", async ({ page }) => {
-      await page.goto("/");
+      await page.goto("./");
       await expect(h1(page, /Every aisle, every shelf/)).toBeVisible();
       await expect(page.getByText("Open the console").first()).toBeVisible();
     });
@@ -44,7 +44,7 @@ test.describe("pre-rendered landing page", () => {
 
     test("every call to action is a real link, and it works", async ({ page }) => {
       await page.route("**/assets/*.js", (route) => route.abort()); // the app never arrives
-      await page.goto("/");
+      await page.goto("./");
       await expect(page.locator('#root a[href="#/sign-in"]')).toHaveCount(7);
       await tid(page, "landing.hero.open").click();
       await expect(page).toHaveURL(/#\/sign-in$/);
@@ -52,7 +52,7 @@ test.describe("pre-rendered landing page", () => {
 
     test("section links already scroll, and FAQ items already open", async ({ page }) => {
       await page.route("**/assets/*.js", (route) => route.abort());
-      await page.goto("/");
+      await page.goto("./");
       await tid(page, "landing.nav.faq").click();
       await expect(page.locator("#faq")).toBeInViewport({ ratio: 0.05 });
       await tid(page, "landing.faq").first().click();
@@ -63,7 +63,7 @@ test.describe("pre-rendered landing page", () => {
       let release;
       const held = new Promise((resolve) => { release = resolve; });
       await page.route("**/assets/*.js", async (route) => { await held; await route.continue(); }); // slow network: the app arrives late
-      await page.goto("/", { waitUntil: "commit" });
+      await page.goto("./", { waitUntil: "commit" });
       await tid(page, "landing.hero.open").click(); // clicked while only the HTML and CSS are there
       release();
       await expect(h1(page, "Sign in to RetailMind")).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("pre-rendered landing page", () => {
   });
 
   test("hydrates in place: the buttons work and the page isn't rebuilt", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("./");
     // Mark the server-rendered heading; if hydration rebuilt the page instead of adopting it, the mark would be gone.
     await page.locator("h1").evaluate((el) => { el.dataset.kept = "yes"; });
     await tid(page, "landing.hero.open").click();
@@ -93,7 +93,7 @@ test.describe("pre-rendered landing page", () => {
 
   test("a link straight to a screen never paints the landing page", async ({ page }) => {
     const seen = await watchForLandingFlash(page);
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await expect(h1(page, "Sign in to RetailMind")).toBeVisible();
     expect(seen.landing).toBe(false);
   });

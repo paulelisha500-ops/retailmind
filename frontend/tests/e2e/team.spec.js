@@ -140,7 +140,7 @@ test.describe("adding a team member", () => {
     const password = (await page.locator(".issued__code").innerText()).trim();
 
     await tid(page, "nav.sign-out").click();
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await tid(page, "signin.email").fill("nadia@retailmind.app");
     await tid(page, "signin.password").fill(password);
     await tid(page, "signin.submit").click();
@@ -211,7 +211,7 @@ test.describe("removing a team member", () => {
 test.describe("access", () => {
   test("a manager can't open Team & Access even by address", async ({ page }) => {
     await signInAs(page, "manager");
-    await page.goto("/#/team");
+    await page.goto("./#/team");
     await expect(h1(page, /Hi, Priya/)).toBeVisible();
   });
 });

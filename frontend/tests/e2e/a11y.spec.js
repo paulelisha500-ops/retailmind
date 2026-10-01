@@ -26,10 +26,10 @@ for (const scheme of ["light", "dark"]) {
     test.use({ colorScheme: scheme });
 
     test("landing page and sign-in", async ({ page }) => {
-      await page.goto("/");
+      await page.goto("./");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await audit(page, "the landing page");
-      await page.goto("/#/sign-in");
+      await page.goto("./#/sign-in");
       await expect(page.getByRole("heading", { level: 1, name: "Sign in to RetailMind" })).toBeVisible();
       await audit(page, "sign-in");
     });
@@ -39,7 +39,7 @@ for (const scheme of ["light", "dark"]) {
         test.slow(); // an audit per screen: generous on a slower CI runner
         await signInAs(page, role);
         for (const route of routes) {
-          await page.goto(`/#/${route}`);
+          await page.goto(`./#/${route}`);
           await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
           await page.waitForTimeout(400); // data and charts settle
           await audit(page, `${role} → ${route}`);

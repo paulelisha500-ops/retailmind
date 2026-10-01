@@ -70,14 +70,14 @@ const ACCOUNT = { admin: "Marcus", manager: "Priya", staff: "Diego", customer: "
  * stretch well past the default assertion wait.
  */
 export async function signInAs(page, role) {
-  await page.goto("/#/sign-in");
+  await page.goto("./#/sign-in");
   await tid(page, `signin.account.${role}`).click();
   await expect(page.getByRole("heading", { level: 1, name: new RegExp(`Hi, ${ACCOUNT[role]}`) })).toBeVisible({ timeout: 20_000 });
 }
 
 /** Opens a screen by its nav entry and waits for its heading. */
 export async function openScreen(page, route, heading) {
-  await page.goto(`/#/${route}`);
+  await page.goto(`./#/${route}`);
   await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
 }
 
