@@ -190,7 +190,7 @@ describe("reordering, outreach and purchase orders", () => {
     const milk = t.bySku("SKU-1101");
     const res = await t.call("POST", `/procurement/suppliers/${supplier.id}/notify`, { token: procurement, body: { store_id: t.hq.id, channel: "email", product_id: milk.id, note: "Urgent" } });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ channel: "email", status: "simulated", supplier_id: supplier.id, product_id: milk.id });
+    expect(res.body).toMatchObject({ channel: "email", status: "logged", supplier_id: supplier.id, product_id: milk.id });
     expect(res.body.message).toContain("Whole Milk (2L) is low on stock");
     expect(res.body.message).toContain("this is Diego Ramirez from RetailMind");
     expect(res.body.message).toContain("Note: Urgent");

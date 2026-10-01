@@ -114,7 +114,7 @@ export function register(r) {
   });
 
   // Computed from this customer's own order history (frequent items + their top categories), falling
-  // back to store-wide popularity and then a plain catalogue sample for a brand-new account.
+  // back to store-wide popularity and then the first few catalogue items for a brand-new account.
   r.get("/customer/recommendations", async (ctx) => {
     const user = await ctx.requireCustomer();
     const { db } = ctx;

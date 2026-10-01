@@ -28,12 +28,12 @@ export async function hashPassword(raw, iterations = PBKDF2_ITERATIONS, salt = c
   return { alg: "pbkdf2-sha256", iterations, salt: toB64(salt), hash: toB64(hash) };
 }
 
-const DUMMY_SALT = new Uint8Array(16);
+const UNKNOWN_ACCOUNT_SALT = new Uint8Array(16);
 
 /** `record` may be null (accounts with no usable login); a miss costs the same time as a wrong password. */
 export async function verifyPassword(raw, record) {
   if (!record) {
-    await pbkdf2(raw, DUMMY_SALT, PBKDF2_ITERATIONS);
+    await pbkdf2(raw, UNKNOWN_ACCOUNT_SALT, PBKDF2_ITERATIONS);
     return false;
   }
   const hash = await pbkdf2(raw, fromB64(record.salt), record.iterations);

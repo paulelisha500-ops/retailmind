@@ -162,7 +162,7 @@ test.describe("forecast", () => {
     await expect(chips).toHaveCount(categories.length);
     for (const name of categories) {
       await chips.filter({ hasText: name }).click();
-      await expect(page.getByRole("img", { name: new RegExp(`^${name.replace("&", "&")} demand`) })).toBeVisible();
+      await expect(page.getByRole("group", { name: new RegExp(`^${name} demand`) })).toBeVisible();
       await expect(page.locator(".reco-card")).toBeVisible();
     }
   });
@@ -216,7 +216,7 @@ test.describe("forecast", () => {
     await tid(page, "team.mode.enterprise").click();
     await tid(page, "nav.forecast").click();
     await expect(h1(page, "Forecast")).toBeVisible();
-    await expect(page.getByRole("img", { name: /demand/ })).toBeVisible();
+    await expect(page.getByRole("group", { name: /demand/ })).toBeVisible();
   });
 });
 

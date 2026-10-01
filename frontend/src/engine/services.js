@@ -35,9 +35,9 @@ export function recordStockShortfall(db, storeId, productName, requested, consum
  * this workspace has none — so every contact is recorded with exactly what would have been sent.
  */
 export function sendEmail() {
-  return ["simulated", "No email provider is connected to this workspace — logged only, nothing sent."];
+  return ["logged", "No email provider is connected to this workspace — logged only, nothing sent."];
 }
 
 export function placeCall() {
-  return ["simulated", "No voice-call provider is connected to this workspace — logged only, nothing dialed."];
+  return ["logged", "No voice-call provider is connected to this workspace — logged only, nothing dialed."];
 }

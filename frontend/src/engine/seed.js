@@ -34,9 +34,9 @@ export function seedWorkspace(db, now = Date.now()) {
   const [hq, riverside, northHills, airport] = stores;
 
   // ---- suppliers ----------------------------------------------------------------------
-  // Vendor-portal mailboxes live on the reserved-for-private-use .internal TLD: valid for the
-  // forms, but nothing sent there can ever reach a real inbox. Trade licence / TRN numbers are
-  // fictional formats modelled on UAE vendor onboarding (licence, VAT TRN, cold-chain disclosure).
+  // Vendor-portal mailboxes live on the reserved-for-private-use .internal TLD: valid for the forms,
+  // but nothing sent there can ever reach a real inbox. The licence, VAT TRN and cold-chain fields follow
+  // UAE vendor onboarding; the numbers themselves are not registered to anyone.
   const supplierDefs = [
     ["Fresh Farms Co.", "Produce", 94, 97, 0, "freshfarms", "+1-555-0101", "DED-771234", "100123456700003", "Net 30", "chilled", "approved", 45],
     ["Nordic Dairy Direct", "Dairy & Chilled", 88, 91, 1, "nordicdairy", "+1-555-0102", "DED-771235", "100123456700010", "Net 30", "chilled", "approved", 12],

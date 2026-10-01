@@ -3,12 +3,15 @@
 
    - app shell + every hashed asset are precached, so repeat visits open instantly and offline
    - hashed assets are cache-first (their names change whenever their content does)
-   - everything else is stale-while-revalidate
+   - the other listed files are stale-while-revalidate; nothing else is touched
    The data lives in IndexedDB and the API runs in-page, so nothing here touches user data. */
 const VERSION = "dev";
 const CACHE = `rm-${VERSION}`;
 const PRECACHE = [];
 const SCOPE = new URL(self.registration.scope);
+// The paths this worker is allowed to answer: the files listed above. Anything else (an API served from the same
+// origin, in the server edition) is never cached here and always goes to the network.
+const STATIC_PATHS = new Set(PRECACHE.map((url) => new URL(url, SCOPE).pathname));
 // Hosts (and Vite's own preview server) often send `Vary: Origin`. Module-script requests carry an Origin
 // header and the copies stored at install time do not, so a strict match misses and an offline `import()`
 // fails even though the file is sitting in the cache. Nothing here varies by request header.
@@ -66,5 +69,5 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(cacheFirst(request));
     return;
   }
-  event.respondWith(staleWhileRevalidate(request));
+  if (STATIC_PATHS.has(url.pathname)) event.respondWith(staleWhileRevalidate(request));
 });

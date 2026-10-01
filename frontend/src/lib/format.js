@@ -18,4 +18,4 @@ export const loyaltyTier = (points) => (points >= 1000 ? "Gold tier" : points >=
 export const firstName = (name) => (name ?? "").split(" ")[0];
 
 /** Outreach statuses as they read to a person. */
-export const outreachLabel = { simulated: "Logged · not sent", sent: "Sent", failed: "Failed" };
+export const outreachLabel = { logged: "Logged · not sent", sent: "Sent", failed: "Failed" };
