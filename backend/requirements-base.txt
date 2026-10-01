@@ -9,7 +9,7 @@ sqlalchemy>=2.0
 psycopg2-binary>=2.9
 
 # Validation and settings
-pydantic[email]>=2.9
+pydantic[email]>=2.13.5
 pydantic-settings>=2.6
 
 # Auth
