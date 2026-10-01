@@ -18,9 +18,9 @@ export const test = base.extend({
     const seen = new Set();
     await page.exposeFunction("__rmRecord", (kind, id) => { (kind === "hit" ? hits : seen).add(id); });
     await page.addInitScript(() => {
-      window.__rm = { saves: 0 };
+      window.__rm = { saves: 0, lastSave: 0 };
       // The engine announces every save of the workspace on this channel (other tabs listen to it too).
-      try { new BroadcastChannel("retailmind-workspace").onmessage = () => { window.__rm.saves += 1; }; } catch { /* no BroadcastChannel */ }
+      try { new BroadcastChannel("retailmind-workspace").onmessage = () => { window.__rm.saves += 1; window.__rm.lastSave = performance.now(); }; } catch { /* no BroadcastChannel */ }
 
       const sent = { hit: new Set(), seen: new Set() };
       const send = (kind, id) => {
@@ -89,6 +89,10 @@ export async function saved(page, action) {
   const before = await page.evaluate(() => window.__rm.saves);
   await action();
   await page.waitForFunction((n) => window.__rm.saves > n, before);
+  // A save that was already under way when the action ran can announce first; the one that carries the action's own
+  // change follows within the engine's 150 ms debounce plus the write itself. Reloading in between would lose it, so
+  // wait until storage has been quiet for well over that.
+  await page.waitForFunction(() => performance.now() - window.__rm.lastSave > 600, null, { polling: 100 });
 }
 
 export const money = (text) => Number(String(text).replace(/[^0-9.]/g, ""));

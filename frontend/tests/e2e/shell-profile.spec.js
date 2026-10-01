@@ -140,7 +140,7 @@ test.describe("profile — admin", () => {
     expect(await theme()).toBeNull();
   });
 
-  test("reset workspace: cancel, close and backdrop leave data alone; confirm restores the original", async ({ page }) => {
+  test("reset workspace: cancel, close, backdrop and Escape leave data alone; confirm restores the original", async ({ page }) => {
     // Make a change worth resetting: complete a task.
     await tid(page, "nav.home").click();
     await tid(page, "home.all-tasks").click();
@@ -155,9 +155,14 @@ test.describe("profile — admin", () => {
       await expect(page.getByRole("dialog")).toHaveCount(0);
     }
     await tid(page, "profile.reset").click();
-    await page.mouse.click(5, 5); // the dimmed backdrop
+    await expect(page.getByRole("dialog", { name: "Reset workspace data?" })).toBeVisible();
+    await tid(page, "profile.reset-confirm.backdrop").click({ position: { x: 6, y: 6 } }); // the dimmed backdrop
     await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await tid(page, "profile.reset").click();
+    await expect(page.getByRole("dialog", { name: "Reset workspace data?" })).toBeVisible();
     await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
 
     await tid(page, "profile.reset").click();
     await tid(page, "profile.reset-confirm.confirm").click();

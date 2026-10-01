@@ -1,6 +1,6 @@
 // The installable, offline-capable side of the app. Service workers are blocked in every other spec so
 // they exercise the network path; here they are switched back on, against the production build.
-import { expect, signInAs, test, tid } from "./fixtures.js";
+import { expect, saved, signInAs, test, tid } from "./fixtures.js";
 
 test.use({ serviceWorkers: "allow" });
 
@@ -86,10 +86,10 @@ test.describe("offline", () => {
     await signInAs(page, "staff");
     await tid(page, "nav.tasks").click();
     await expect(page.getByText("5 open today")).toBeVisible();
-    const saves = await page.evaluate(() => window.__rm.saves);
-    await tid(page, "tasks.toggle").first().click();
-    await expect(page.getByText("4 open today")).toBeVisible();
-    await page.waitForFunction((n) => window.__rm.saves > n, saves);
+    await saved(page, async () => {
+      await tid(page, "tasks.toggle").first().click();
+      await expect(page.getByText("4 open today")).toBeVisible();
+    });
     await page.reload();
     await expect(page.getByText("4 open today")).toBeVisible();
     await context.setOffline(false);
