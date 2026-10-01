@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Deploy RetailMind to a Hugging Face Space (Docker SDK).
+"""Deploy the SERVER edition of RetailMind to a Hugging Face Docker Space.
 
-Everything runs inside the Space - PostgreSQL, the FastAPI API and the built
-React console share one container (see space/Dockerfile) - so nothing has to run
-on your own machine once it is deployed. The Space is a full copy of this repo
-plus its own Dockerfile; re-running this script syncs it with your checkout and
-Hugging Face rebuilds automatically.
+This is the optional route: PostgreSQL, the FastAPI API and the built console share one container
+(see the Dockerfile next to this file). Hugging Face only hosts Docker Spaces on paid hardware, so
+the account that owns the Space needs a PRO subscription. The free route is the static Space
+published by deploy/hf_space.py, which runs the same app entirely in the browser.
 
-    python space/deploy.py              # create/sync the Space from this checkout
-    python space/deploy.py --wait       # ...then wait until it is RUNNING (or fails)
-    python space/deploy.py --wait-only  # just watch a build that's already started
-    python space/deploy.py --logs build # print the build (or --logs run) logs
+The Space is a full copy of this repo plus its own Dockerfile; re-running this script syncs it with
+your checkout and Hugging Face rebuilds automatically.
+
+    python deploy/docker-space/deploy.py              # create/sync the Space from this checkout
+    python deploy/docker-space/deploy.py --wait       # ...then wait until it is RUNNING (or fails)
+    python deploy/docker-space/deploy.py --wait-only  # just watch a build that's already started
+    python deploy/docker-space/deploy.py --logs build # print the build (or --logs run) logs
 
 Auth: the token from `hf auth login` (or HF_TOKEN). No secret is uploaded or needed -
-the Space generates its own JWT signing key at boot. Uses the free cpu-basic hardware.
+the Space generates its own JWT signing key at boot.
 """
 import argparse
 import json
@@ -25,22 +27,23 @@ from pathlib import Path
 
 from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi, get_token
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
+HERE = Path(__file__).resolve().parent
 
-SKIP_DIRS = {".git", ".claude", "node_modules", "__pycache__", "dist", ".venv", "venv", ".idea", ".vscode"}
+SKIP_DIRS = {".git", ".github", ".claude", "node_modules", "__pycache__", "dist", ".venv", "venv", ".idea", ".vscode", "test-results", "playwright-report"}
 # The repo-root Dockerfile + compose file are the local multi-container setup (the Space
 # brings its own Dockerfile); .gitattributes must stay HF's own (it carries the LFS rules).
-SKIP_PATHS = {"Dockerfile", "docker-compose.yml", "space/Dockerfile", ".gitattributes"}
+SKIP_PATHS = {"Dockerfile", "docker-compose.yml", "deploy/docker-space/Dockerfile", ".gitattributes"}
 
 CARD = """---
-title: RetailMind AI
+title: RetailMind Server
 emoji: 🛒
-colorFrom: indigo
-colorTo: purple
+colorFrom: green
+colorTo: blue
 sdk: docker
 app_port: 7860
 pinned: false
-short_description: Retail ops console - inventory, forecasting, procurement
+short_description: RetailMind server edition - FastAPI, PostgreSQL and the console in one container
 ---
 
 """
@@ -70,8 +73,8 @@ def collect_files() -> dict[str, bytes]:
     assert ".env" not in {Path(p).name for p in files}, "refusing to upload a .env file"
 
     # The Space's own files. Shell scripts / Dockerfiles must be LF (they run on Linux).
-    files["Dockerfile"] = lf((ROOT / "space" / "Dockerfile").read_bytes())
-    files["space/entrypoint.sh"] = lf(files["space/entrypoint.sh"])
+    files["Dockerfile"] = lf((HERE / "Dockerfile").read_bytes())
+    files["deploy/docker-space/entrypoint.sh"] = lf(files["deploy/docker-space/entrypoint.sh"])
     files["README.md"] = CARD.encode("utf-8") + lf(files["README.md"])
     return files
 
@@ -89,7 +92,7 @@ def deploy(api: HfApi, repo_id: str) -> None:
         repo_id=repo_id,
         repo_type="space",
         operations=ops,
-        commit_message="Deploy RetailMind (API + PostgreSQL + UI in one container)",
+        commit_message="Deploy RetailMind server edition (API + PostgreSQL + UI in one container)",
     )
     print(f"uploaded {len(files)} files, removed {len(stale)} stale -> {info.commit_url}")
     time.sleep(15)  # let the build start before anyone polls the stage

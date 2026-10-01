@@ -1,5 +1,5 @@
-# The Space builds these on Linux — CRLF would break the shebang / Dockerfile parsing
+# The Docker Space builds these on Linux — CRLF would break the shebang / Dockerfile parsing
 # when the repo is checked out on Windows.
 *.sh text eol=lf
 Dockerfile text eol=lf
-space/Dockerfile text eol=lf
+deploy/docker-space/Dockerfile text eol=lf

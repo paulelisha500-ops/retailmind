@@ -1,0 +1,44 @@
+name: CodeQL
+
+# GitHub's static analysis for security problems in the JavaScript and Python code. Free for public repositories;
+# results appear under Security -> Code scanning.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1" # Mondays, 04:23 UTC: catches newly published query rules even when nothing changed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

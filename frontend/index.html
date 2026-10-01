@@ -2,14 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RetailMind AI</title>
-    <meta name="description" content="RetailMind AI — demand forecasting, procurement, shelf alerts and a customer app for grocery and fashion retail." />
-    <meta name="theme-color" content="#2E7D4F" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232E7D4F'/%3E%3Cpath d='M9 22c0-8 5-12 14-12 0 8-4 13-11 13' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>RetailMind — retail operations platform</title>
+    <meta name="description" content="Forecast demand, route procurement, watch the shelves and run the register — one console for retail operations." />
+    <link rel="canonical" href="https://paulelisha500-ops.github.io/retailmind/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RetailMind" />
+    <meta property="og:title" content="RetailMind — retail operations platform" />
+    <meta property="og:description" content="Forecasting, procurement, shelf alerts, a register with loyalty and a customer app — it runs entirely in your browser." />
+    <meta property="og:url" content="https://paulelisha500-ops.github.io/retailmind/" />
+    <meta property="og:image" content="https://paulelisha500-ops.github.io/retailmind/social-preview.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The RetailMind landing page: a forecast chart, a stock alert, today's tasks and gross margin." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="RetailMind" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <script>
+      // Before first paint: apply a saved light/dark choice (no flash), and note a visit that won't show the
+      // landing page (a saved session, or a link to a screen) so the pre-rendered landing page stays hidden.
+      try { var t = localStorage.getItem("retailmind_theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+      try { if (localStorage.getItem("retailmind_token") || (location.hash && location.hash !== "#" && location.hash !== "#/")) document.documentElement.setAttribute("data-boot", "app"); } catch (e) {}
+    </script>
+    <script>
+      // The landing page's section links work from the first paint, before (and independent of) the app's script.
+      document.addEventListener("click", function (e) {
+        var link = e.target.closest && e.target.closest("[data-scroll]");
+        var target = link && document.getElementById(link.getAttribute("data-scroll"));
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>RetailMind needs JavaScript to run.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

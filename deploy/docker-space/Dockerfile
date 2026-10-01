@@ -1,7 +1,7 @@
-# Hugging Face Space (Docker SDK): the WHOLE app in one container —
+# Hugging Face Space (Docker SDK): the SERVER edition in one container —
 # PostgreSQL + the FastAPI API + the built React console, all on port 7860.
 #
-# space/deploy.py uploads this file as the Space's root /Dockerfile. The repo-root
+# deploy/docker-space/deploy.py uploads this file as the Space's root /Dockerfile. The repo-root
 # Dockerfile + docker-compose.yml are the separate local multi-container setup and
 # are not used here. Build context = repo root (so both backend/ and frontend/ are visible).
 
@@ -11,10 +11,11 @@ WORKDIR /ui
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# Empty string = same origin: the API is served by the same process as the UI
+# The server edition of the console: it talks to the API instead of running its own engine.
+# VITE_API_URL="" means same origin - the API is served by the same process as the UI
 # (see FRONTEND_DIST in backend/app/main.py).
 ENV VITE_API_URL=""
-RUN npm run build
+RUN npm run build:server
 
 # ---- 2. API + PostgreSQL + built UI -----------------------------------------
 FROM python:3.11-slim
@@ -44,7 +45,7 @@ RUN pip install --no-cache-dir --timeout 300 --retries 15 torch --index-url http
 
 COPY --chown=user:user backend/ /app/
 COPY --from=ui --chown=user:user /ui/dist /app/static
-COPY --chown=user:user space/entrypoint.sh /app/entrypoint.sh
+COPY --chown=user:user deploy/docker-space/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 USER user
@@ -52,7 +53,7 @@ ENV HOME=/home/user \
     PYTHONPATH=/app \
     PYTHONUNBUFFERED=1 \
     FRONTEND_DIST=/app/static \
-    ENVIRONMENT=demo
+    ENVIRONMENT=production
 
 EXPOSE 7860
 CMD ["/app/entrypoint.sh"]

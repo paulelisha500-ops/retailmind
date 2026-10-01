@@ -1,12 +1,22 @@
 """
-Pydantic schemas — the request/response contracts the React/Flutter clients
-(and the prototype's screens) are built against. Field names deliberately
-mirror the mock data shapes already used in the frontend prototype.
+Pydantic schemas — the request and response contracts the console (and any other client) is built against.
+The browser edition's in-page engine answers the same shapes (frontend/src/engine/serializers.js).
 """
-from datetime import datetime
-from typing import Literal, Optional
+from datetime import UTC, datetime
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, PlainSerializer, field_validator
+
+
+def _as_utc(value: datetime) -> str:
+    """Timestamps are stored as naive UTC. On the wire they carry an explicit Z, so a browser reads them as UTC
+    instead of guessing they are local time."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+UtcDatetime = Annotated[datetime, PlainSerializer(_as_utc, return_type=str, when_used="json")]
 
 
 class OrmBase(BaseModel):
@@ -90,6 +100,12 @@ class TeamMemberOut(OrmBase):
     store_id: Optional[str] = None
 
 
+class TeamMemberCreatedOut(TeamMemberOut):
+    """Returned once, when a person is added: the temporary password to hand over. It is never stored in the clear
+    and never shown again."""
+    temporary_password: str
+
+
 # ---------- Stores ----------
 
 class StoreOut(OrmBase):
@@ -109,8 +125,8 @@ class BatchOut(OrmBase):
     lot_number: str
     quantity: int
     aisle_location: Optional[str] = None
-    received_at: datetime
-    expires_at: datetime
+    received_at: UtcDatetime
+    expires_at: UtcDatetime
     status: str
 
 
@@ -184,7 +200,7 @@ class NotificationOut(BaseModel):
     severity: str  # "red" | "amber" | "green" | "blue"
     title: str
     detail: str
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 # ---------- Alerts (CCTV / CV pipeline) ----------
@@ -200,7 +216,7 @@ class AlertOut(OrmBase):
     confidence: float
     status: str
     assigned_to: Optional[str] = None
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class AlertResolve(BaseModel):
@@ -223,7 +239,7 @@ class SupplierOut(OrmBase):
     performance_score: int
     on_time_pct: float
     late_deliveries_30d: int
-    contract_end: Optional[datetime] = None
+    contract_end: Optional[UtcDatetime] = None
 
 
 OnboardingStatus = Literal["pending", "compliance_review", "approved", "suspended"]
@@ -303,7 +319,7 @@ class SupplierContactLogOut(OrmBase):
     reason: str
     message: str
     status: str
-    created_at: datetime
+    created_at: UtcDatetime
 
 
 class PurchaseOrderItemOut(OrmBase):
@@ -319,7 +335,7 @@ class PurchaseOrderOut(OrmBase):
     store_id: str
     status: str
     total_cost: float
-    need_by: Optional[datetime] = None
+    need_by: Optional[UtcDatetime] = None
     created_from: str
     forecast_confidence: Optional[float] = None
     items: list[PurchaseOrderItemOut] = []
@@ -345,6 +361,8 @@ class TaskOut(OrmBase):
 
 class ForecastPoint(BaseModel):
     label: str
+    date: Optional[str] = None
+    kind: Literal["actual", "forecast"] = "forecast"
     actual: Optional[float] = None
     predicted: Optional[float] = None
     band_low: Optional[float] = None
@@ -355,6 +373,7 @@ class ForecastResponse(BaseModel):
     category: str
     model: str
     mape: Optional[float] = None
+    mape_kind: Optional[Literal["backtest", "training_fit"]] = None  # held-out days vs. the data it trained on
     points: list[ForecastPoint]
     recommendation: str
     recommended_po_quantity: Optional[int] = None
@@ -457,7 +476,7 @@ class CustomerOrderOut(OrmBase):
     payment_method: Optional[str] = None
     amount_tendered: Optional[float] = None
     change_due: Optional[float] = None
-    created_at: datetime
+    created_at: UtcDatetime
     items: list[CustomerOrderItemOut] = []
 
 
@@ -481,9 +500,9 @@ class CustomerDirectoryOut(BaseModel):
     phone: Optional[str] = None
     email: str
     loyalty_points: int = 0
-    member_since: datetime
+    member_since: UtcDatetime
     total_orders: int = 0
-    last_order_at: Optional[datetime] = None
+    last_order_at: Optional[UtcDatetime] = None
 
 
 class CustomerDetailOut(CustomerDirectoryOut):

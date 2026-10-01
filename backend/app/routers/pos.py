@@ -26,8 +26,12 @@ from app.constants import POINTS_TO_AED
 from app.database import get_db
 from app.models import CustomerOrder, CustomerOrderItem, Product, Store, User, UserRole
 from app.schemas import (
-    PAYMENT_METHODS, CashierCheckoutRequest, CustomerDetailOut, CustomerDirectoryOut,
-    CustomerOrderOut, QuickCustomerCreate,
+    PAYMENT_METHODS,
+    CashierCheckoutRequest,
+    CustomerDetailOut,
+    CustomerDirectoryOut,
+    CustomerOrderOut,
+    QuickCustomerCreate,
 )
 from app.security import hash_password, require_employee
 from app.services.fulfillment import consume_stock, record_stock_shortfall
@@ -106,7 +110,7 @@ def quick_enroll_customer(payload: QuickCustomerCreate, db: Session = Depends(ge
         orders = db.query(CustomerOrder).filter(CustomerOrder.customer_id == existing.id).order_by(CustomerOrder.created_at.desc()).limit(20).all()
         return CustomerDetailOut(**_directory_row(existing, stats).model_dump(), orders=orders)
 
-    email = payload.email or f"cust{re.sub(r'[^0-9]', '', phone)}@loyalty.retailmind.local"
+    email = payload.email or f"cust{re.sub(r'[^0-9]', '', phone)}@members.retailmind.app"
     if db.query(User).filter(func.lower(User.email) == email.lower()).first():
         raise HTTPException(status_code=409, detail="An account with that email already exists")
 

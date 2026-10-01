@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Boots everything inside the Space container, then hands over to the API server.
 #
-# Runs as the unprivileged `user` (UID 1000). State is ephemeral on the free tier:
-# a restart gives a fresh container, so the database is re-initialised and the demo
-# data re-seeded (app.seed is a no-op if data already exists, e.g. with persistent storage).
+# Runs as the unprivileged `user` (UID 1000). Storage is ephemeral unless the Space has persistent
+# storage: a restart gives a fresh container, so the database is re-initialised and the starting
+# data re-seeded (app.seed is a no-op if data already exists).
 set -euo pipefail
 
 # Debian installs the PostgreSQL server binaries under a versioned directory off PATH.
@@ -40,9 +40,9 @@ export JWT_SECRET="${JWT_SECRET:-$(python -c 'import secrets; print(secrets.toke
 # (REDIS_URL is configured in app/config.py but nothing in the backend imports redis,
 #  so no Redis server is started here.)
 
-# 3. Seed demo data, then serve UI + API on the Space port --------------------------
+# 3. Seed the starting data, then serve UI + API on the Space port ---------------------
 cd /app
-echo "[boot] seeding demo data"
+echo "[boot] seeding the starting data"
 python -m app.seed
 
 echo "[boot] starting API + UI on :${PORT:-7860}"

@@ -14,16 +14,32 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import alerts, analytics, assistant, auth, customer, forecast, inventory, notifications, pos, procurement, stores, tasks, team, warehouse
+from app.routers import (
+    alerts,
+    analytics,
+    assistant,
+    auth,
+    customer,
+    forecast,
+    inventory,
+    notifications,
+    pos,
+    procurement,
+    stores,
+    tasks,
+    team,
+    warehouse,
+    workspace,
+)
 
 app = FastAPI(
     title=settings.app_name,
     description=(
-        "API behind the RetailMind AI prototype: inventory & shelf monitoring, "
-        "food quality/expiry, demand forecasting, supplier & purchase-order "
-        "workflow, team/IAM, and store analytics."
+        "The RetailMind server edition: inventory and shelf monitoring, food quality and expiry, demand "
+        "forecasting, supplier and purchase-order workflow, the register and loyalty, team and access, and "
+        "store analytics. The browser edition answers the same API inside the page."
     ),
-    version="0.1.0",
+    version="1.0.0",
 )
 
 app.add_middleware(
@@ -48,18 +64,21 @@ app.include_router(customer.router)
 app.include_router(warehouse.router)
 app.include_router(notifications.router)
 app.include_router(pos.router)
+app.include_router(workspace.router)
 
 
 @app.on_event("startup")
 def on_startup():
-    # Creates tables if they don't exist yet. Fine for local dev; use
-    # Alembic migrations (see README) for anything resembling production.
+    # Creates tables if they don't exist yet. Fine for local use; run Alembic migrations (see README) once the
+    # schema needs to change under live data.
     Base.metadata.create_all(bind=engine)
 
-    # PyTorch's first forward pass on a fresh process pays a one-time
-    # thread-pool/backend init cost (~5s) — pay it now at boot instead of on
-    # the first user's forecast request.
-    import torch
+    # PyTorch's first forward pass on a fresh process pays a one-time thread-pool/backend start-up cost (~5s) —
+    # pay it now at boot instead of on the first forecast request. Skipped when PyTorch isn't installed.
+    try:
+        import torch
+    except ImportError:
+        return
     with torch.no_grad():
         torch.nn.Linear(4, 4)(torch.zeros(1, 4))
 

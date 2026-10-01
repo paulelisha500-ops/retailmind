@@ -1,0 +1,26 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning:passlib.*",
+    "ignore::DeprecationWarning:jose.*",
+]
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+extend-exclude = ["app/__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",  # long lines are tolerated; the formatter-free style here favours readable one-liners
+    "B008",  # FastAPI's Depends() in argument defaults is the framework's idiom
+    "UP007", # Optional[X] is used in the pydantic schemas on purpose
+    "UP045",
+    "E712",  # SQLAlchemy comparisons such as Task.done == False are intentional
+    "UP042", # the (str, Enum) members are stored and serialised as plain strings; StrEnum would change their str()
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

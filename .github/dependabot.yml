@@ -1,0 +1,36 @@
+# Keeps dependencies and the pipeline itself current: weekly, grouped so a week's updates arrive as one pull
+# request per ecosystem instead of a dozen, each one running the full CI before it can be merged.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      python:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly

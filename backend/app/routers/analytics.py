@@ -1,19 +1,32 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.constants import POINTS_TO_AED
 from app.database import get_db
 from app.models import (
-    Batch, BatchStatus, CustomerOrder, CustomerOrderItem, POStatus, Product,
-    PurchaseOrder, SalesRecord, Store, User, UserRole,
+    Batch,
+    BatchStatus,
+    CustomerOrder,
+    CustomerOrderItem,
+    POStatus,
+    Product,
+    PurchaseOrder,
+    SalesRecord,
+    Store,
+    User,
+    UserRole,
 )
 from app.schemas import AnalyticsSummary, KpiOut, MoverOut, PnlCategoryOut, PnlStoreOut, PnlSummary, PnlTrendPoint
 from app.security import require_admin, require_employee
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+def start_of_utc_day() -> datetime:
+    return datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 @router.get("/summary", response_model=AnalyticsSummary)
@@ -22,11 +35,10 @@ def analytics_summary(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    """Admin-only, matching the frontend: revenue and margin data isn't
-    shown to Associates there, and isn't exposed here either. Pass no
-    store_id for the Enterprise 'all stores' rollup, or a specific
-    store_id for the Single Store / drill-down view."""
-    since = datetime.utcnow() - timedelta(days=7)
+    """Admin-only: revenue and margin aren't shown to associates in the app, and aren't exposed here either. Pass
+    no store_id for the enterprise rollup over all stores, or one for the single-store view. The window is the
+    last seven full days."""
+    since = start_of_utc_day() - timedelta(days=7)
     q = db.query(SalesRecord).filter(SalesRecord.date >= since)
     if store_id:
         q = q.filter(SalesRecord.store_id == store_id)
@@ -36,12 +48,11 @@ def analytics_summary(
     total_units = sum(r.units_sold for r in records)
     promo_units = sum(r.units_sold for r in records if r.promo_flag)
 
-    # --- sales trend: revenue grouped by day ---
-    by_day: dict[str, float] = {}
+    # --- sales trend: revenue grouped by calendar day, oldest first ---
+    by_day: dict = {}
     for r in records:
-        key = r.date.strftime("%a")
-        by_day[key] = by_day.get(key, 0.0) + r.revenue
-    sales_trend = [{"day": d, "revenue": round(v, 2)} for d, v in by_day.items()]
+        by_day[r.date.date()] = by_day.get(r.date.date(), 0.0) + r.revenue
+    sales_trend = [{"day": d.strftime("%a"), "revenue": round(v, 2)} for d, v in sorted(by_day.items())]
 
     # --- category revenue mix ---
     by_cat: dict[str, float] = {}
@@ -52,9 +63,8 @@ def analytics_summary(
         for c, v in by_cat.items()
     ]
 
-    # --- waste by category: real % of received units marked removed
-    # (spoiled/expired/damaged), per category. None (not 0) when a category
-    # has no batches at all yet — "no data" is never shown as "no waste". ---
+    # --- waste by category: % of received units written off (spoiled/expired/damaged), per category. None, not 0,
+    # when a category has no batches at all — "no data" is never shown as "no waste". ---
     waste_by_category = []
     for cat in by_cat.keys():
         batch_q = db.query(Batch).join(Product, Product.id == Batch.product_id).filter(Product.category == cat)
@@ -96,11 +106,15 @@ def analytics_summary(
 
 
 @router.get("/movers", response_model=list[MoverOut])
-def movers(store_id: str, days: int = 14, limit: int = 10, db: Session = Depends(get_db), _: User = Depends(require_employee)):
-    """What's selling out fast: real per-product velocity from actual
-    checkout line items (CustomerOrderItem) over the trailing window,
-    ranked descending, with real days-of-supply against current stock.
-    Sparse until more real orders exist — that's honest, not a bug."""
+def movers(
+    store_id: str,
+    days: int = Query(14, ge=1),
+    limit: int = Query(10, ge=1),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_employee),
+):
+    """What's selling out fast: per-product velocity from checkout line items over the trailing window, ranked
+    descending, with days of supply against current stock. Sparse until more orders exist."""
     since = datetime.utcnow() - timedelta(days=days)
     sold = (
         db.query(CustomerOrderItem.product_id, func.coalesce(func.sum(CustomerOrderItem.quantity), 0).label("qty"))
@@ -134,18 +148,18 @@ def movers(store_id: str, days: int = 14, limit: int = 10, db: Session = Depends
 
 
 @router.get("/pnl", response_model=PnlSummary)
-def profit_and_loss(store_id: str | None = None, days: int = 30, db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    """Real trading P&L, at the level a UAE hypermarket store manager
-    actually reviews (LuLu, Carrefour/Majid Al Futtaim): Gross Sales, less
-    loyalty-point discounts, is Net Sales; less Cost of Goods Sold (COGS, at
-    each product's landed unit cost) is Gross Profit. Every figure comes
-    from real CustomerOrder/CustomerOrderItem rows placed through checkout
-    or the register — nothing here is simulated. Rent and payroll aren't
-    modeled in this system, so this stops at gross margin rather than a
-    full net-income statement — the honest boundary of what this data can
-    actually support.
+def profit_and_loss(
+    store_id: str | None = None,
+    days: int = Query(30, ge=1),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Trading P&L at the level a hypermarket store manager reviews: gross sales, less loyalty-point discounts,
+    is net sales; less cost of goods sold (at each product's landed unit cost) is gross profit. Every figure comes
+    from the order and line-item rows placed through checkout or the register. Rent and payroll aren't modelled,
+    so it stops at gross margin rather than a full net-income statement.
     """
-    since = datetime.utcnow() - timedelta(days=days)
+    since = start_of_utc_day() - timedelta(days=days)
 
     order_q = db.query(CustomerOrder).filter(CustomerOrder.created_at >= since)
     if store_id:
@@ -174,7 +188,7 @@ def profit_and_loss(store_id: str | None = None, days: int = 30, db: Session = D
     margin_pct = round(gross_profit / net_sales * 100, 1) if net_sales else 0.0
     avg_order_value = round(net_sales / len(orders), 2) if orders else 0.0
 
-    # --- procurement spend: real cash committed to suppliers this window ---
+    # --- procurement spend: money committed to suppliers this window ---
     po_q = db.query(PurchaseOrder).filter(
         PurchaseOrder.created_at >= since, PurchaseOrder.status.in_([POStatus.approved, POStatus.delivered]),
     )
@@ -182,10 +196,9 @@ def profit_and_loss(store_id: str | None = None, days: int = 30, db: Session = D
         po_q = po_q.filter(PurchaseOrder.store_id == store_id)
     procurement_spend = round(sum(po.total_cost for po in po_q.all()), 2)
 
-    # --- shrinkage: batches written off (spoiled/expired/damaged), not sold
-    # through. A batch fully sold via checkout also ends up status=removed,
-    # but fulfillment.py drains its quantity to 0 first — only a removed
-    # batch that STILL has quantity on it represents real waste. ---
+    # --- shrinkage: batches written off (spoiled/expired/damaged), not sold through. A batch fully sold via
+    # checkout also ends up status=removed, but fulfillment.py drains its quantity to 0 first — only a removed
+    # batch that still has quantity on it is waste. ---
     shrink_q = db.query(Batch).filter(Batch.status == BatchStatus.removed, Batch.quantity > 0)
     if store_id:
         shrink_q = shrink_q.filter(Batch.store_id == store_id)
@@ -194,10 +207,8 @@ def profit_and_loss(store_id: str | None = None, days: int = 30, db: Session = D
     shrink_products = {p.id: p for p in db.query(Product).filter(Product.id.in_({b.product_id for b in shrink_batches})).all()} if shrink_batches else {}
     shrinkage_cost = round(sum(b.quantity * (shrink_products[b.product_id].cost_price or 0.0) for b in shrink_batches if b.product_id in shrink_products), 2)
 
-    # --- loyalty liability: points on customer accounts are a real
-    # redeemable-for-AED balance — carried as a liability the same way
-    # LuLu/Carrefour loyalty points sit on the books. Not store-scoped: a
-    # customer's balance isn't tied to any one store. ---
+    # --- loyalty liability: points on customer accounts are a redeemable balance, carried as a liability. Not
+    # store-scoped: a customer's balance isn't tied to any one store. ---
     total_points = db.query(func.coalesce(func.sum(User.loyalty_points), 0)).filter(User.role == UserRole.customer).scalar() or 0
     loyalty_liability = round(total_points * POINTS_TO_AED, 2)
 
@@ -217,9 +228,8 @@ def profit_and_loss(store_id: str | None = None, days: int = 30, db: Session = D
             gross_profit=round(gp, 2), margin_pct=round(gp / v["revenue"] * 100, 1) if v["revenue"] else 0.0,
         ))
 
-    # --- by store: only meaningful for the enterprise ("all stores") view.
-    # Every store appears, including ones with no sales this window — a
-    # silent 0 is a real, useful answer here ("nothing sold"), not one to hide. ---
+    # --- by store: only meaningful for the enterprise ("all stores") view. Every store appears, including ones
+    # with no sales this window: a 0 is a real answer here ("nothing sold"), not one to hide. ---
     by_store = []
     if store_id is None:
         all_stores = db.query(Store).all()
@@ -241,17 +251,16 @@ def profit_and_loss(store_id: str | None = None, days: int = 30, db: Session = D
                 gross_profit=round(gp, 2), margin_pct=round(gp / v["revenue"] * 100, 1) if v["revenue"] else 0.0,
             ))
 
-    # --- daily trend: net sales per day against that day's COGS ---
-    trend_totals: dict[str, dict] = {}
+    # --- daily trend: net sales per day against that day's COGS, oldest first ---
+    trend_totals: dict = {}
     for o in orders:
-        key = o.created_at.strftime("%b %d")
-        entry = trend_totals.setdefault(key, {"revenue": 0.0, "cogs": 0.0, "date": o.created_at.date()})
+        entry = trend_totals.setdefault(o.created_at.date(), {"revenue": 0.0, "cogs": 0.0})
         entry["revenue"] += o.total
         for it in items_by_order.get(o.id, []):
             entry["cogs"] += item_cost(it)
     trend = [
-        PnlTrendPoint(label=k, revenue=round(v["revenue"], 2), cogs=round(v["cogs"], 2), gross_profit=round(v["revenue"] - v["cogs"], 2))
-        for k, v in sorted(trend_totals.items(), key=lambda kv: kv[1]["date"])
+        PnlTrendPoint(label=day.strftime("%b %d"), revenue=round(v["revenue"], 2), cogs=round(v["cogs"], 2), gross_profit=round(v["revenue"] - v["cogs"], 2))
+        for day, v in sorted(trend_totals.items())
     ]
 
     return PnlSummary(

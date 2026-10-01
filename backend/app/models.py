@@ -1,22 +1,29 @@
 """
-ORM models — the PostgreSQL half of the recommended stack.
+ORM models — the relational schema behind the server edition.
 
-Design notes (matching the architecture discussed with the client):
-  - Perishables are tracked at the BATCH/LOT level, not just product level,
-    so FEFO (first-expired-first-out) picking and expiry alerts are possible.
-  - Every alert (stock/quality/theft) records which CV model produced it and
-    a confidence score, and is routed to a specific employee — nothing here
-    represents an auto-actioned decision, only a flagged-for-review one.
-  - `responsibilities` on User is the IAM permission set an admin assigns in
-    Team & Access (mirrors RESPONSIBILITIES in the frontend prototype).
+Design notes:
+  - Perishables are tracked at the batch/lot level, not just the product level, so FEFO (first-expired-first-out)
+    picking and expiry alerts are possible.
+  - Every alert (stock/quality/theft) records which detection model produced it and a confidence score, and is
+    routed to a specific employee — nothing here represents an auto-actioned decision, only a flagged-for-review one.
+  - `responsibilities` on User is the permission set an admin assigns in Team & Access (the same list the app's
+    team screen offers).
 """
 import enum
 import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer,
-    JSON, String, Text,
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 
@@ -160,10 +167,8 @@ class Product(Base):
     cost_price = Column(Float, nullable=True)  # landed unit cost — real COGS/margin math in the P&L needs this, not just retail price
     supplier_id = Column(String, ForeignKey("suppliers.id"), nullable=True)
     reorder_threshold = Column(Integer, default=10)
-    # Nutrition/allergen data would live in MongoDB in the target
-    # architecture (see backend/README.md), joined in at read time — this
-    # scaffold doesn't run Mongo, so it's modeled here as JSON columns
-    # instead of faked with hardcoded response data.
+    # Free-form product attributes (nutrition panels, allergens) are JSON columns: they vary by product and are
+    # always read together with the product, so a separate document store would only add a join.
     nutrition = Column(JSON, default=dict)          # e.g. {"kcal": 52, "carbs_g": 14, "fiber_g": 2.4}
     allergens = Column(JSON, default=list)           # e.g. ["milk", "gluten"]
     dietary_tags = Column(JSON, default=list)         # e.g. ["Gluten-free", "No added sugar"]
@@ -370,9 +375,9 @@ class CustomerOrderItem(Base):
 class SupplierContactLog(Base):
     """A record of supplier outreach — real detection (why contact was
     needed) and a real log entry every time, whether or not a message
-    provider is actually configured. Without one, status stays 'simulated'
-    (nothing dispatched) instead of silently pretending to have called or
-    emailed anyone; see app/services/outreach.py."""
+    provider is actually configured. Without one, status stays 'logged'
+    (nothing dispatched) instead of pretending to have called or emailed
+    anyone; see app/services/outreach.py."""
     __tablename__ = "supplier_contact_log"
     id = Column(String, primary_key=True, default=_uuid)
     supplier_id = Column(String, ForeignKey("suppliers.id"), nullable=False)
@@ -382,7 +387,7 @@ class SupplierContactLog(Base):
     channel = Column(String, nullable=False)  # "email" | "call"
     reason = Column(Text, nullable=False)
     message = Column(Text, nullable=False)
-    status = Column(String, default="simulated")  # "simulated" | "sent" | "failed"
+    status = Column(String, default="logged")  # "logged" | "sent" | "failed"
     created_at = Column(DateTime, default=datetime.utcnow)
 
     supplier = relationship("Supplier")

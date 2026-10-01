@@ -1,0 +1,88 @@
+/* App shell: translucent sidebar on wide screens, bottom tab bar on phones, large-title headers
+   and the screen-to-screen transition. */
+
+.app { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+
+/* ---- sidebar ---- */
+.sidebar {
+  position: sticky; top: 0; height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--safe-top) + 20px) 14px 16px;
+  background: var(--bar); border-right: 0.5px solid var(--separator);
+  -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+}
+.brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 22px; }
+.brand__mark { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(155deg, var(--tint-fill), #1c5e3a); color: #fff; box-shadow: 0 6px 14px -6px rgba(46, 125, 79, 0.6); flex: 0 0 auto; }
+.brand__name { font: 700 17px/1.1 var(--font-display); letter-spacing: -0.02em; }
+.brand__tag { font-size: 11.5px; color: var(--label-2); margin-top: 2px; }
+.nav { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; overflow-y: auto; }
+.nav__item {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent;
+  color: var(--label-2); font: 600 14.5px/1 var(--font); text-align: left; transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), transform var(--dur-press) var(--ease-out);
+}
+.nav__item:active { transform: scale(0.98); }
+.nav__item.is-active { background: var(--tint-soft); color: var(--tint-strong); }
+@media (hover: hover) { .nav__item:not(.is-active):hover { background: var(--fill); color: var(--label); } }
+.sidebar__foot { display: flex; align-items: center; gap: 10px; padding: 14px 6px 0; margin-top: 10px; border-top: 0.5px solid var(--separator); }
+.sidebar__who { flex: 1; min-width: 0; }
+.sidebar__name { font-weight: 600; font-size: 13.5px; }
+.sidebar__role { font-size: 11.5px; color: var(--label-2); }
+
+/* ---- tab bar (phones) ---- */
+.tabbar { display: none; }
+@media (max-width: 899px) {
+  .app { display: block; }
+  .sidebar { display: none; }
+  .tabbar {
+    position: fixed; z-index: 60; left: 0; right: 0; bottom: 0; display: flex; padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+    background: var(--bar); border-top: 0.5px solid var(--separator);
+    -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+  }
+  .tabbar__item {
+    flex: 1 1 0; min-width: 0; height: var(--tabbar-h); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 0 2px;
+    border: 0; background: transparent; color: var(--label-2); font: 600 10.5px/1 var(--font); transition: color var(--dur) var(--ease), transform var(--dur-press) var(--ease-out);
+  }
+  .tabbar__item:active { transform: scale(0.92); }
+  .tabbar__item.is-active { color: var(--tint); }
+  .tabbar__item svg { transition: transform 360ms var(--spring); }
+  .tabbar__item.is-active svg { transform: translateY(-1px) scale(1.08); }
+}
+
+/* ---- screen ---- */
+.screen { max-width: 1120px; margin: 0 auto; padding: 30px 36px 96px; animation: screen-in 360ms var(--ease) both; }
+@media (max-width: 899px) { .screen { padding: calc(var(--safe-top) + 14px) 16px calc(var(--tabbar-h) + var(--safe-bottom) + 32px); } }
+@keyframes screen-in { from { opacity: 0; transform: translateY(10px); } }
+
+.screen-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.screen-head__sub { margin-top: 4px; color: var(--label-2); font-size: 14px; }
+.screen-head__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; padding-bottom: 4px; }
+
+.navbar { display: none; }
+@media (max-width: 899px) {
+  .navbar {
+    position: fixed; z-index: 55; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: center; height: calc(var(--safe-top) + 44px); padding-top: var(--safe-top);
+    background: var(--bar); border-bottom: 0.5px solid var(--separator); font: 600 16px/1 var(--font); opacity: 0; transform: translateY(-4px); pointer-events: none;
+    -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+  }
+  .navbar.is-visible { opacity: 1; transform: none; }
+  .t-large { font-size: 32px; }
+}
+
+/* two-up grids used by several screens */
+.grid-2 { display: grid; gap: 16px; }
+@media (min-width: 900px) { .grid-2 { grid-template-columns: 1fr 1fr; align-items: start; } }
+.tile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 640px) { .tile-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .tile-grid { grid-template-columns: repeat(4, 1fr); } }
+.tile {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 22px; min-height: 104px; padding: 14px 16px;
+  border: 0; border-radius: var(--r-l); text-align: left; font: 600 14.5px/1.2 var(--font); background: var(--surface); box-shadow: var(--shadow-card);
+  transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur) var(--ease);
+}
+.tile:active { transform: scale(0.965); }
+@media (hover: hover) { .tile:hover { box-shadow: var(--shadow-card), 0 8px 24px -14px rgba(0, 0, 0, 0.25); } }
+.tile__icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 11px; color: #fff; background: var(--tint-fill); }
+.tile__count { position: absolute; top: 12px; right: 12px; min-width: 24px; padding: 3px 8px; border-radius: 999px; background: var(--red-fill); color: #fff; font: 700 12px/1.2 var(--font); text-align: center; }
+.tile--green .tile__icon { background: var(--tint-fill); }
+.tile--red .tile__icon { background: var(--red); }
+.tile--blue .tile__icon { background: var(--blue); }
+.tile--amber .tile__icon { background: var(--amber); }
+.tile--plum .tile__icon { background: var(--plum); }

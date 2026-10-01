@@ -1,15 +1,10 @@
 """
-AI Business Assistant (Module 9) — multi-agent, but deliberately not an LLM
-wrapper: each "agent" below is a plain function that queries live Postgres
-data for one business domain and composes an answer from real numbers. No
-external model call, no fabricated copy — the honest tradeoff for running
-without an LLM API key. The router picks an agent by keyword match on the
-question, same as the frontend's old client-side demo did, except now the
-answer changes when the underlying data changes.
+The business assistant: a set of plain agents that each query one domain of live store data and compose an answer
+from real numbers. No language model is involved, so every sentence is traceable to a record; the router just picks
+the agent by keyword, and the answer changes when the underlying data does.
 
-Swapping this for a real LLM later is a matter of replacing the text
-composition in each *_agent function with a prompted call that's still
-grounded in the same queries — the retrieval half doesn't change.
+A language model could replace the text composition in each *_agent function with a prompted call that stays grounded
+in the same queries — the retrieval half wouldn't change.
 """
 from datetime import datetime, timedelta
 
@@ -104,7 +99,7 @@ def _forecast_agent(db: Session, store_id: str, question: str) -> AskResponse:
     direction = "up" if pct >= 0 else "down"
     return AskResponse(
         agent="Forecast Agent", tone="green" if pct >= 0 else "amber",
-        text=f"{label} is actually trending {direction} about {abs(pct):.0f}% this week vs last week ({recent_avg:.0f} vs {prior_avg:.0f} units/day avg) — based on live sales_records, not a canned figure.",
+        text=f"{label[0].upper()}{label[1:]} is trending {direction} about {abs(pct):.0f}% this week vs last week ({recent_avg:.0f} vs {prior_avg:.0f} units/day on average), based on this store's sales records.",
     )
 
 
