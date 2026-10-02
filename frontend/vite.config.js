@@ -11,7 +11,8 @@ export default defineConfig({
   build: {
     target: "es2022",
     chunkSizeWarningLimit: 300,
-    rollupOptions: { output: { manualChunks: { react: ["react", "react-dom"] } } },
+    // React gets its own long-cached chunk (a function: the bundler no longer accepts the object form).
+    rolldownOptions: { output: { manualChunks: (id) => (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id) ? "react" : undefined) } },
   },
   server: {
     port: 3002,
