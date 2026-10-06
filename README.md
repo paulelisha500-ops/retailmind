@@ -69,26 +69,28 @@ each build served gzip-compressed like a static host, builds interleaved, median
 
 | First visit | original | now |
 |---|---|---|
-| Transferred | 594 kB | **79 kB** |
-| JavaScript | 198 kB | **62 kB** |
+| Transferred | 594 kB | **103 kB** |
+| JavaScript | 198 kB | **86 kB** |
 | Largest paint, desktop | 844 ms | **324 ms** |
 | Largest paint, slow 3G (400 kbps, 400 ms RTT) | 5.3 s | **1.7 s** |
 | Largest paint, phone (4× CPU, 1.6 Mbps, 150 ms RTT) | 13.3 s | **4.0 s** |
 
 The landing page is rendered into `index.html` at build time, so a first visit paints from the HTML and CSS alone
 (23–36% sooner than the same build without it), and its buttons are real links that work before any script arrives.
-Screens are separate chunks fetched on demand and warmed while the browser is idle; the service worker makes repeat
-visits instant and works offline. A cold sign-in takes about 0.6 s: the built-in accounts' password hash is
-precomputed, so nothing is derived on first launch, and the first save never sits on the request path. Controls
-respond instantly and are put back only if a change is refused. The figures compare builds with one another on one
-machine; they are not a promise about any particular phone.
+That is also why React 19, which added 24 kB to the JavaScript above, left the paint times where they were
+(re-measured against the React 18 build, within a few percent under all three conditions). Screens are separate chunks
+fetched on demand and warmed while the browser is idle, and a warmed screen opens without a loading placeholder (13–42
+ms to a ready screen on a desktop); the service worker makes repeat visits instant and works offline. A cold sign-in
+takes about 0.6 s: the built-in accounts' password hash is precomputed, so nothing is derived on first launch, and the
+first save never sits on the request path. Controls respond instantly and are put back only if a change is refused.
+The figures compare builds with one another on one machine; they are not a promise about any particular phone.
 
 ## Tested
 
-- **126 unit tests** drive the engine through its public API: validation, authorisation, every router, the
+- **132 unit tests** drive the engine through its public API: validation, authorisation, every router, the
   forecasting methods, persistence and clock alignment.
 - **End-to-end tests** run the production build in a real browser at desktop and phone sizes, and offline.
-  `scripts/interactive-census.mjs` lists every button, field and control in the source (165 test ids), and
+  `scripts/interactive-census.mjs` lists every button, field and control in the source (166 test ids), and
   `scripts/coverage-gate.mjs` fails the build unless **each one — and each one ever rendered — was exercised**.
 - **Accessibility**: axe-core (WCAG 2.1 A and AA plus best practice) audits every screen in light and dark, the
   dialogs and error states, and the phone layout.
