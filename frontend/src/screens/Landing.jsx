@@ -45,7 +45,7 @@ const FAQ = [
   ["What happens when a sale is rung up?", "A real order is created, loyalty points are earned or redeemed, and stock is drawn from real batches, first-expired-first-out — so shelf fill, reorder alerts and the P&L all move with the sale."],
   ["Is the Profit & Loss screen real?", "Net sales, cost of goods sold, gross margin, shrinkage and loyalty liability are all computed from orders and each product's landed cost. It stops at gross margin because rent and payroll aren't modelled."],
   ["Can I try every role?", "Yes. Sign in as an admin, manager, staff member or customer from the workspace accounts on the sign-in screen. Each role sees a genuinely different set of screens and permissions."],
-  ["Can I run it on my own servers?", "Yes. The server edition replaces the in-browser engine with the FastAPI and PostgreSQL backend in this repository, run with Docker Compose, for multi-user deployments."],
+  ["Can I run it on my own servers?", "Yes. The server edition replaces the in-browser engine with the FastAPI backend in this repository, on SQLite or PostgreSQL, for multi-user deployments. It needs nothing but Python."],
 ];
 
 /** A composite of live product pieces — no photography, nothing to download. */
@@ -151,7 +151,7 @@ export default function Landing() {
             <article className="card l-edition">
               <span className="tag tag--blue">Server edition</span>
               <h3 className="t-title">Your own infrastructure</h3>
-              <ul className="l-list"><li>FastAPI and PostgreSQL behind the same interface</li><li>Shared by every store and user, with real accounts</li><li>One command with Docker Compose</li></ul>
+              <ul className="l-list"><li>FastAPI and PostgreSQL behind the same interface</li><li>Shared by every store and user, with real accounts</li><li>Runs on plain Python, with SQLite or PostgreSQL</li></ul>
               <a className="btn btn--gray" href={REPO} target="_blank" rel="noopener noreferrer" data-tid="landing.editions.source"><Github size={17} aria-hidden="true" />View the source</a>
             </article>
           </div>

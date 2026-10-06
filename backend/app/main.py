@@ -96,10 +96,9 @@ def health():
     return {"status": "ok", "environment": settings.environment}
 
 
-# Single-origin deployment (the Hugging Face Space): when FRONTEND_DIST points at
-# a built frontend, serve it from this same process so the UI and the API share
-# one origin and one port. Mounted last, so every API route above wins. Unset
-# (local dev / docker-compose) -> nothing is mounted and behaviour is unchanged.
+# Single-origin deployment: when FRONTEND_DIST points at a built frontend (`VITE_API_URL= npm run build:server`),
+# serve it from this same process so the UI and the API share one origin and one port. Mounted last, so every API
+# route above wins. Unset (local dev) -> nothing is mounted and behaviour is unchanged.
 _frontend_dist = os.environ.get("FRONTEND_DIST")
 if _frontend_dist and Path(_frontend_dist).is_dir():
     app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
