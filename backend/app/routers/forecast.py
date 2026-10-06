@@ -9,13 +9,14 @@ used, so the rest of the API runs without them installed (a method whose library
 import math
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import SalesRecord, User
 from app.schemas import ForecastPoint, ForecastResponse
@@ -43,7 +44,7 @@ def _history_fingerprint(history: pd.DataFrame) -> int:
 
 
 def _load_history(db: Session, store_id: str, category: str, days_back: int = HISTORY_DAYS) -> pd.DataFrame:
-    cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_back)
+    cutoff = utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_back)
     rows = (
         db.query(SalesRecord)
         .filter(

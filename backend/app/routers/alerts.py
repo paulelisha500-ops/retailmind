@@ -1,8 +1,8 @@
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import Alert, AlertStatus, User
 from app.schemas import AlertOut
@@ -37,7 +37,7 @@ def resolve_alert(alert_id: str, db: Session = Depends(get_db), user: User = Dep
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     alert.status = AlertStatus.resolved
-    alert.resolved_at = datetime.utcnow()
+    alert.resolved_at = utcnow()
     db.commit()
     db.refresh(alert)
     return alert

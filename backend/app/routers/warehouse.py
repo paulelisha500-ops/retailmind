@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import (
     Alert,
@@ -80,7 +81,7 @@ def pick_route(store_id: str, db: Session = Depends(get_db), _: User = Depends(r
     for a in open_alerts:
         steps.append({"location": a.location, "task": a.message, "source": "Shelf/quality alert"})
 
-    cutoff = datetime.utcnow() + timedelta(days=3)
+    cutoff = utcnow() + timedelta(days=3)
     alert_locations = {a.location for a in open_alerts}
     expiring = (
         db.query(Batch, Product)
@@ -92,7 +93,7 @@ def pick_route(store_id: str, db: Session = Depends(get_db), _: User = Depends(r
         loc = batch.aisle_location or "Unassigned"
         if loc in alert_locations:
             continue  # already covered by an alert at the same spot
-        days_left = max(0, (batch.expires_at - datetime.utcnow()).days)
+        days_left = max(0, (batch.expires_at - utcnow()).days)
         steps.append({"location": loc, "task": f"Rotate/markdown {product.name} — {days_left}d left ({batch.lot_number})", "source": "FEFO expiry"})
 
     steps.sort(key=lambda s: _aisle_sort_key(s["location"]))

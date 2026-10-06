@@ -6,12 +6,13 @@ the agent by keyword, and the answer changes when the underlying data does.
 A language model could replace the text composition in each *_agent function with a prompted call that stays grounded
 in the same queries — the retrieval half wouldn't change.
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import Alert, AlertKind, AlertStatus, Batch, BatchStatus, Product, SalesRecord, Supplier, User
 from app.security import require_employee
@@ -39,7 +40,7 @@ class AskResponse(BaseModel):
 
 
 def _quality_agent(db: Session, store_id: str) -> AskResponse:
-    cutoff = datetime.utcnow() + timedelta(days=5)
+    cutoff = utcnow() + timedelta(days=5)
     expiring = (
         db.query(Batch, Product)
         .join(Product, Product.id == Batch.product_id)
@@ -57,7 +58,7 @@ def _quality_agent(db: Session, store_id: str) -> AskResponse:
         return AskResponse(agent="Quality Agent", tone="green", text="Nothing needs attention right now — no batches expiring in the next 5 days and no open quality flags.")
     parts = []
     if expiring:
-        lines = [f"{p.name} ({b.lot_number}) in {b.aisle_location or 'store'} — {(b.expires_at - datetime.utcnow()).days}d left" for b, p in expiring]
+        lines = [f"{p.name} ({b.lot_number}) in {b.aisle_location or 'store'} — {(b.expires_at - utcnow()).days}d left" for b, p in expiring]
         parts.append(f"Expiring soonest: {'; '.join(lines)}.")
     if open_quality:
         parts.append(f"{len(open_quality)} open quality flag(s): {'; '.join(a.message for a in open_quality[:2])}.")
@@ -75,7 +76,7 @@ def _procurement_agent(db: Session, store_id: str) -> AskResponse:
         text += f" {worst.name} is the weak link — {worst.performance_score} score, {worst.late_deliveries_30d} late deliveries in the last 30 days."
     if soon:
         nearest = soon[0]
-        days = (nearest.contract_end - datetime.utcnow()).days
+        days = (nearest.contract_end - utcnow()).days
         if days <= 30:
             text += f" Also worth a look: {nearest.name}'s contract renews in {days} days."
     return AskResponse(agent="Procurement Agent", tone="blue", text=text)
@@ -87,8 +88,8 @@ def _forecast_agent(db: Session, store_id: str, question: str) -> AskResponse:
     q = db.query(SalesRecord).filter(SalesRecord.store_id == store_id)
     if category:
         q = q.filter(SalesRecord.category == category)
-    recent_cutoff = datetime.utcnow() - timedelta(days=7)
-    prior_cutoff = datetime.utcnow() - timedelta(days=14)
+    recent_cutoff = utcnow() - timedelta(days=7)
+    prior_cutoff = utcnow() - timedelta(days=14)
     recent = [r.units_sold for r in q.filter(SalesRecord.date >= recent_cutoff).all()]
     prior = [r.units_sold for r in q.filter(SalesRecord.date >= prior_cutoff, SalesRecord.date < recent_cutoff).all()]
     label = category or "overall demand"

@@ -1,7 +1,6 @@
 """The server starts from the same workspace as the browser edition: same counts, same people, same stock."""
-from datetime import datetime
-
 from app import seed
+from app.clock import utcnow
 from app.models import (
     Alert,
     Batch,
@@ -65,7 +64,7 @@ def test_people_and_the_shared_password(api):
 
 def test_history_is_dated_relative_to_now(db):
     newest = db.query(SalesRecord).order_by(SalesRecord.date.desc()).first().date
-    assert (datetime.utcnow() - newest).days <= 1
+    assert (utcnow() - newest).days <= 1
 
 
 def test_reset_restores_the_original_data(api, db):

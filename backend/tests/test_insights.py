@@ -1,7 +1,8 @@
 """Analytics, profit and loss, the warehouse views and the business assistant."""
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+from app.clock import utcnow
 from app.models import Alert, AlertStatus, Batch, BatchStatus, Product, Store, Transaction
 
 
@@ -125,7 +126,7 @@ class TestWarehouse:
 
     def test_orders_the_pick_route_by_aisle_and_skips_expiries_an_alert_already_covers(self, api, db, hq):
         batch = db.query(Batch).filter(Batch.store_id == hq.id, Batch.status == BatchStatus.active, Batch.aisle_location.like("Aisle 14%")).first()
-        batch.expires_at = datetime.utcnow() + timedelta(days=1)
+        batch.expires_at = utcnow() + timedelta(days=1)
         db.commit()
         route = api.get(f"/warehouse/pick-route?store_id={hq.id}", "staff").json()
         assert [r["step"] for r in route] == list(range(1, len(route) + 1))

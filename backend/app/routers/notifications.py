@@ -2,12 +2,13 @@
 The bell icon's dropdown — a feed merged from open alerts, products that have crossed their reorder threshold, and
 recent customer orders ("payments"), sorted by recency. Every row traces back to a live query.
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import Alert, AlertStatus, Batch, BatchStatus, CustomerOrder, Product, User
 from app.schemas import NotificationOut
@@ -51,11 +52,11 @@ def list_notifications(store_id: str, db: Session = Depends(get_db), user: User 
                     id=f"restock-{product.id}", kind="restock", severity=severity,
                     title=f"{'Out of stock' if current == 0 else 'Low stock'} · {product.name}",
                     detail=f"{current} of {product.reorder_threshold} (reorder point) on hand",
-                    created_at=datetime.utcnow(),
+                    created_at=utcnow(),
                 ))
 
     if user.notify_orders:
-        since = datetime.utcnow() - timedelta(hours=48)
+        since = utcnow() - timedelta(hours=48)
         for o in db.query(CustomerOrder).filter(CustomerOrder.store_id == store_id, CustomerOrder.created_at >= since).all():
             out.append(NotificationOut(
                 id=f"order-{o.id}", kind="order", severity="green",
