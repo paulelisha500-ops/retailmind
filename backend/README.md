@@ -28,7 +28,7 @@ history), and every route, status code, validation message and calculation is pi
 
 ## Run it
 
-You need Python 3.11 or newer. No database server, no Docker:
+You need Python 3.12 or newer. No database server, no Docker:
 
 ```bash
 cd backend
