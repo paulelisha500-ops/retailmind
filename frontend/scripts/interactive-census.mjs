@@ -76,7 +76,7 @@ for (const file of walk(SRC)) {
       const name = node.name.name;
       const attrs = attrMap(node);
       const isComponent = /^[A-Z]/.test(name);
-      let interactive = false;
+      let interactive;
 
       if (isComponent) {
         if (name === "ListRow") interactive = attrs.has("onClick");
