@@ -2,7 +2,7 @@ import { expect, signInAs, test, tid } from "./fixtures.js";
 
 test.describe("landing page", () => {
   test("every section link scrolls its section into view", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("./");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Every aisle, every shelf");
     for (const id of ["platform", "roles", "editions", "faq"]) {
       await tid(page, `landing.nav.${id}`).click();
@@ -12,7 +12,7 @@ test.describe("landing page", () => {
 
   test("every call to action opens the sign-in screen", async ({ page }) => {
     for (const id of ["landing.nav.sign-in", "landing.nav.open", "landing.hero.open", "landing.hero.sign-in", "landing.editions.open", "landing.cta.open", "landing.footer.sign-in"]) {
-      await page.goto("/");
+      await page.goto("./");
       await tid(page, id).scrollIntoViewIfNeeded();
       await tid(page, id).click();
       await expect(page.getByRole("heading", { level: 1, name: "Sign in to RetailMind" }), id).toBeVisible();
@@ -21,7 +21,7 @@ test.describe("landing page", () => {
   });
 
   test("FAQ items expand and collapse", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("./");
     const items = tid(page, "landing.faq");
     const count = await items.count();
     expect(count).toBe(6);
@@ -37,7 +37,7 @@ test.describe("landing page", () => {
   test("source links point at the repository and open in a new tab", async ({ page, context }) => {
     // Answer with a stub page so the test never touches the real site (and the tracer has a normal page to record).
     await context.route("https://github.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<title>repository</title>" }));
-    await page.goto("/");
+    await page.goto("./");
     for (const id of ["landing.editions.source", "landing.footer.source"]) {
       const link = tid(page, id);
       await expect(link).toHaveAttribute("href", "https://github.com/paulelisha500-ops/retailmind");
@@ -49,10 +49,11 @@ test.describe("landing page", () => {
     }
   });
 
-  test("shows no stock photography or web-font requests", async ({ page }) => {
+  test("shows no stock photography or web-font requests", async ({ page, baseURL }) => {
+    const own = new URL(baseURL).origin; // the site under test: localhost for the local build, the host for a deployed one
     const external = [];
-    page.on("request", (r) => { if (!r.url().startsWith("http://localhost")) external.push(r.url()); });
-    await page.goto("/");
+    page.on("request", (r) => { if (!r.url().startsWith(own)) external.push(r.url()); });
+    await page.goto("./");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(external).toEqual([]);
@@ -61,20 +62,20 @@ test.describe("landing page", () => {
 
 test.describe("sign in", () => {
   test("the back button returns to the landing page", async ({ page }) => {
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await tid(page, "signin.back").click();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Every aisle, every shelf");
   });
 
   test("requires both fields before it will submit", async ({ page }) => {
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await tid(page, "signin.submit").click();
     await expect(tid(page, "signin.email")).toHaveJSProperty("validity.valueMissing", true);
     await expect(page.getByRole("heading", { level: 1, name: "Sign in to RetailMind" })).toBeVisible();
   });
 
   test("rejects a wrong password with a clear message", async ({ page }) => {
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await tid(page, "signin.email").fill("marcus@retailmind.app");
     await tid(page, "signin.password").fill("not-the-password");
     await tid(page, "signin.submit").click();
@@ -83,7 +84,7 @@ test.describe("sign in", () => {
   });
 
   test("rejects an unknown or malformed email", async ({ page }) => {
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await tid(page, "signin.email").fill("nobody@retailmind.app");
     await tid(page, "signin.password").fill("retailmind");
     await tid(page, "signin.submit").click();
@@ -91,7 +92,7 @@ test.describe("sign in", () => {
   });
 
   test("signs in with typed credentials and lands on Home", async ({ page }) => {
-    await page.goto("/#/sign-in");
+    await page.goto("./#/sign-in");
     await tid(page, "signin.email").fill("priya@retailmind.app");
     await tid(page, "signin.password").fill("retailmind");
     await tid(page, "signin.submit").click();
@@ -107,7 +108,7 @@ test.describe("sign in", () => {
       // Sign out from the sidebar returns to the landing page and forgets the session.
       await tid(page, "nav.sign-out").click();
       await expect(page.getByRole("heading", { level: 1 })).toContainText("Every aisle, every shelf");
-      await page.goto("/#/home");
+      await page.goto("./#/home");
       await expect(page.getByRole("heading", { level: 1 })).toContainText("Every aisle, every shelf");
     });
   }
@@ -119,7 +120,7 @@ test.describe("sign in", () => {
   });
 
   test("signed-out visitors can't open app routes directly", async ({ page }) => {
-    await page.goto("/#/procurement");
+    await page.goto("./#/procurement");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Every aisle, every shelf");
   });
 });
