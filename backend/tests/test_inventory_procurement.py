@@ -1,6 +1,7 @@
 """Products, CSV import, stock views, suppliers, reorder detection, outreach and purchase-order approval."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+from app.clock import utcnow
 from app.models import Batch, BatchStatus, Product, Store, Supplier, SupplierContactLog
 from tests.conftest import user_by_email
 
@@ -176,7 +177,7 @@ class TestStockViews:
 
     def test_lists_batches_expiring_soon_oldest_expiry_first(self, api, db, hq):
         batch = db.query(Batch).filter(Batch.store_id == hq.id, Batch.status == BatchStatus.active).first()
-        batch.expires_at = datetime.utcnow() + timedelta(days=1)
+        batch.expires_at = utcnow() + timedelta(days=1)
         db.commit()
         res = api.get(f"/inventory/expiring-soon?store_id={hq.id}&within_days=2", "manager").json()
         assert batch.id in [b["id"] for b in res]

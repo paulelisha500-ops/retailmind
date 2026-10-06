@@ -2,7 +2,6 @@ import csv
 import io
 import math
 import re
-from datetime import datetime
 from typing import get_args
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -10,6 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import Batch, BatchStatus, POStatus, Product, PurchaseOrder, Supplier, SupplierContactLog, User
 from app.schemas import (
@@ -301,7 +301,7 @@ def approve_order(
 
     order.status = POStatus.approved
     order.approved_by = user.id
-    order.approved_at = datetime.utcnow()
+    order.approved_at = utcnow()
     db.commit()
     db.refresh(order)
     return order
@@ -322,7 +322,7 @@ def reject_order(
 
     order.status = POStatus.rejected
     order.approved_by = user.id
-    order.approved_at = datetime.utcnow()
+    order.approved_at = utcnow()
     db.commit()
     db.refresh(order)
     return order

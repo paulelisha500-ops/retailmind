@@ -4,12 +4,13 @@ import math
 import re
 import sys
 import types
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pandas as pd
 import pytest
 
 import app.ml as ml_package
+from app.clock import utcnow
 from app.models import SalesRecord, Store
 from app.routers import forecast
 
@@ -114,7 +115,7 @@ class TestMethodRunner:
         assert len(history) >= 60
         assert history["ds"].is_monotonic_increasing
         assert {"y", "units_sold", "promo_flag", "temperature_c", "is_holiday", "local_event_flag"} <= set(history.columns)
-        assert history["ds"].iloc[-1] <= pd.Timestamp(datetime.utcnow())
+        assert history["ds"].iloc[-1] <= pd.Timestamp(utcnow())
 
     def test_a_library_that_is_not_installed_becomes_not_available(self, history, monkeypatch):
         monkeypatch.delitem(sys.modules, "app.ml.forecast_xgboost", raising=False)
@@ -154,4 +155,4 @@ class TestMethodRunner:
 
 def test_the_history_window_ends_today(db, hq):
     latest = forecast._load_history(db, hq.id, "Produce")["ds"].iloc[-1]
-    assert datetime.utcnow() - timedelta(days=2) < latest.to_pydatetime() <= datetime.utcnow()
+    assert utcnow() - timedelta(days=2) < latest.to_pydatetime() <= utcnow()

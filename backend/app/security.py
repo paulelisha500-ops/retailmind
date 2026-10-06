@@ -5,7 +5,7 @@ the app gates screens:
   - `require_responsibility("Purchase Approvals")` — must be Admin OR have
     that specific responsibility assigned in Team & Access
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -14,6 +14,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.config import settings
 from app.database import get_db
 from app.models import AccessLevel, User, UserRole
@@ -31,7 +32,7 @@ def verify_password(raw: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: str) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+    expire = utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {"sub": user_id, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 

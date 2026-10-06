@@ -1,12 +1,13 @@
 import csv
 import io
 import math
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import (
     Batch,
@@ -224,7 +225,7 @@ def expiring_soon(
     """FEFO in practice: batches closest to their expiry date first, so
     picking/markdown decisions always work the oldest-expiring stock first
     regardless of which delivery it arrived in."""
-    cutoff = datetime.utcnow() + timedelta(days=within_days)
+    cutoff = utcnow() + timedelta(days=within_days)
     return (
         db.query(Batch)
         .filter(

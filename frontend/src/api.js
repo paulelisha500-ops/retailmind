@@ -5,8 +5,8 @@ import { engineRequest, flushEngine, warmEngine } from "./engine/client.js";
 
 export const EDITION = import.meta.env.VITE_BACKEND === "server" ? "server" : "browser";
 
-// `??`, not `||`: an explicitly empty VITE_API_URL means "same origin" (the single-container Docker
-// Space build sets it that way). Unset — local dev — falls back to the local API.
+// `??`, not `||`: an explicitly empty VITE_API_URL means "same origin" (a build the API serves itself, through
+// FRONTEND_DIST). Unset — local dev — falls back to the local API.
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8002";
 
 export const UNAUTHORIZED_EVENT = "rm:unauthorized";

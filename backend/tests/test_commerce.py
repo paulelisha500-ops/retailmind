@@ -1,7 +1,8 @@
 """The customer app (catalogue, shopping list, self-checkout, receipts, recommendations) and the register (customer
 directory, cashier checkout, loyalty points, stock draw-down)."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+from app.clock import utcnow
 from app.models import Batch, BatchStatus, Offer, Product, ShoppingListItem, Task, User
 from tests.conftest import user_by_email
 
@@ -28,7 +29,7 @@ class TestCatalogueAndOffers:
         offers = db.query(Offer).order_by(Offer.title).all()
         by_title = {o.title: o for o in offers}
         by_title["20% off fresh berries"].active = False
-        by_title["Frozen bundle deal"].ends_at = datetime.utcnow() - timedelta(seconds=1)
+        by_title["Frozen bundle deal"].ends_at = utcnow() - timedelta(seconds=1)
         db.commit()
         assert [o["title"] for o in api.get("/customer/offers", "customer").json()] == ["Bakery: buy 1 get 1"]
 

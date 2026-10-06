@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.constants import POINTS_TO_AED
 from app.database import get_db
 from app.models import (
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 def start_of_utc_day() -> datetime:
-    return datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    return utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 @router.get("/summary", response_model=AnalyticsSummary)
@@ -115,7 +116,7 @@ def movers(
 ):
     """What's selling out fast: per-product velocity from checkout line items over the trailing window, ranked
     descending, with days of supply against current stock. Sparse until more orders exist."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = utcnow() - timedelta(days=days)
     sold = (
         db.query(CustomerOrderItem.product_id, func.coalesce(func.sum(CustomerOrderItem.quantity), 0).label("qty"))
         .join(CustomerOrder, CustomerOrder.id == CustomerOrderItem.order_id)

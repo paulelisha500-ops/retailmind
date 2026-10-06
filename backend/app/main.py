@@ -6,6 +6,7 @@ Entry point. Run locally with:
 which serves interactive docs at http://localhost:8000/docs
 """
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -32,6 +33,28 @@ from app.routers import (
     workspace,
 )
 
+
+def on_startup():
+    # Creates tables if they don't exist yet. Fine for local use; run Alembic migrations (see README) once the
+    # schema needs to change under live data.
+    Base.metadata.create_all(bind=engine)
+
+    # PyTorch's first forward pass on a fresh process pays a one-time thread-pool/backend start-up cost (~5s) —
+    # pay it now at boot instead of on the first forecast request. Skipped when PyTorch isn't installed.
+    try:
+        import torch
+    except ImportError:
+        return
+    with torch.no_grad():
+        torch.nn.Linear(4, 4)(torch.zeros(1, 4))
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    on_startup()
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
     description=(
@@ -40,6 +63,7 @@ app = FastAPI(
         "store analytics. The browser edition answers the same API inside the page."
     ),
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -67,31 +91,14 @@ app.include_router(pos.router)
 app.include_router(workspace.router)
 
 
-@app.on_event("startup")
-def on_startup():
-    # Creates tables if they don't exist yet. Fine for local use; run Alembic migrations (see README) once the
-    # schema needs to change under live data.
-    Base.metadata.create_all(bind=engine)
-
-    # PyTorch's first forward pass on a fresh process pays a one-time thread-pool/backend start-up cost (~5s) —
-    # pay it now at boot instead of on the first forecast request. Skipped when PyTorch isn't installed.
-    try:
-        import torch
-    except ImportError:
-        return
-    with torch.no_grad():
-        torch.nn.Linear(4, 4)(torch.zeros(1, 4))
-
-
 @app.get("/health", tags=["health"])
 def health():
     return {"status": "ok", "environment": settings.environment}
 
 
-# Single-origin deployment (the Hugging Face Space): when FRONTEND_DIST points at
-# a built frontend, serve it from this same process so the UI and the API share
-# one origin and one port. Mounted last, so every API route above wins. Unset
-# (local dev / docker-compose) -> nothing is mounted and behaviour is unchanged.
+# Single-origin deployment: when FRONTEND_DIST points at a built frontend (`VITE_API_URL= npm run build:server`),
+# serve it from this same process so the UI and the API share one origin and one port. Mounted last, so every API
+# route above wins. Unset (local dev) -> nothing is mounted and behaviour is unchanged.
 _frontend_dist = os.environ.get("FRONTEND_DIST")
 if _frontend_dist and Path(_frontend_dist).is_dir():
     app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")

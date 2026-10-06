@@ -11,7 +11,6 @@ Design notes:
 """
 import enum
 import uuid
-from datetime import datetime
 
 from sqlalchemy import (
     JSON,
@@ -27,6 +26,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from app.clock import utcnow
 from app.database import Base
 
 
@@ -83,7 +83,7 @@ class Store(Base):
     code = Column(String, unique=True, nullable=False)
     region = Column(String, nullable=True)
     is_headquarters = Column(Boolean, default=False)  # used for enterprise rollups
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     users = relationship("User", back_populates="store", foreign_keys="User.store_id")
     batches = relationship("Batch", back_populates="store")
@@ -117,7 +117,7 @@ class User(Base):
     notify_security = Column(Boolean, default=True)
     notify_orders = Column(Boolean, default=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     store = relationship("Store", back_populates="users", foreign_keys=[store_id])
 
@@ -148,7 +148,7 @@ class Supplier(Base):
     performance_score = Column(Integer, default=0)   # 0-100, recomputed nightly from delivery history
     on_time_pct = Column(Float, default=0.0)
     late_deliveries_30d = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     products = relationship("Product", back_populates="supplier")
     purchase_orders = relationship("PurchaseOrder", back_populates="supplier")
@@ -172,7 +172,7 @@ class Product(Base):
     nutrition = Column(JSON, default=dict)          # e.g. {"kcal": 52, "carbs_g": 14, "fiber_g": 2.4}
     allergens = Column(JSON, default=list)           # e.g. ["milk", "gluten"]
     dietary_tags = Column(JSON, default=list)         # e.g. ["Gluten-free", "No added sugar"]
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     supplier = relationship("Supplier", back_populates="products")
     batches = relationship("Batch", back_populates="product")
@@ -187,7 +187,7 @@ class Batch(Base):
     lot_number = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False)
     aisle_location = Column(String, nullable=True)  # e.g. "Aisle 05 · Row B"
-    received_at = Column(DateTime, default=datetime.utcnow)
+    received_at = Column(DateTime, default=utcnow)
     expires_at = Column(DateTime, nullable=False, index=True)  # indexed: expiry queries run constantly
     status = Column(Enum(BatchStatus), default=BatchStatus.active)
 
@@ -206,7 +206,7 @@ class PurchaseOrder(Base):
     need_by = Column(DateTime, nullable=True)
     created_from = Column(String, default="manual")  # "forecast" | "manual" | "reorder_threshold"
     forecast_confidence = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     approved_by = Column(String, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
 
@@ -238,7 +238,7 @@ class Alert(Base):
     confidence = Column(Float, nullable=False)
     status = Column(Enum(AlertStatus), default=AlertStatus.open)
     assigned_to = Column(String, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     resolved_at = Column(DateTime, nullable=True)
 
     store = relationship("Store", back_populates="alerts")
@@ -253,7 +253,7 @@ class Task(Base):
     detail = Column(String, nullable=True)
     source = Column(String, nullable=True)  # "Shelf monitoring" | "Procurement" | ...
     done = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class SalesRecord(Base):
@@ -305,7 +305,7 @@ class ShoppingListItem(Base):
     product_id = Column(String, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, default=1)
     checked = Column(Boolean, default=False)
-    added_at = Column(DateTime, default=datetime.utcnow)
+    added_at = Column(DateTime, default=utcnow)
 
     product = relationship("Product")
 
@@ -320,7 +320,7 @@ class Offer(Base):
     tone = Column(String, default="green")  # drives the UI accent color: green | blue | amber
     category = Column(String, nullable=True)  # null = store-wide
     active = Column(Boolean, default=True)
-    starts_at = Column(DateTime, default=datetime.utcnow)
+    starts_at = Column(DateTime, default=utcnow)
     ends_at = Column(DateTime, nullable=True)
 
 
@@ -345,7 +345,7 @@ class CustomerOrder(Base):
     payment_method = Column(String, nullable=True)  # "cash" | "card" | "apple_pay" | "google_pay" | "samsung_pay" | "tabby"
     amount_tendered = Column(Float, nullable=True)  # cash only
     change_due = Column(Float, nullable=True)       # cash only
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     items = relationship("CustomerOrderItem", back_populates="order", cascade="all, delete-orphan")
     customer = relationship("User", foreign_keys=[customer_id])
@@ -388,7 +388,7 @@ class SupplierContactLog(Base):
     reason = Column(Text, nullable=False)
     message = Column(Text, nullable=False)
     status = Column(String, default="logged")  # "logged" | "sent" | "failed"
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     supplier = relationship("Supplier")
     product = relationship("Product")

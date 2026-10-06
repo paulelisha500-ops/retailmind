@@ -55,7 +55,7 @@ are skipped against a deployed site unless `E2E_LIVE_CREDENTIALS=1` is set by th
   in `frontend/src/lib/query.js`); do not leave a switch waiting on a round trip.
 - **Check accessibility as you build.** Text needs 4.5:1 contrast in both themes (use the `--tint-fill` and
   `--red-fill` tokens behind white text), form fields go through `Field`, and anything unnamed needs an `aria-label`.
-- **Keep first load small.** The first screen's JavaScript is about 62 kB gzipped; `scripts/bench-load.mjs`
+- **Keep first load small.** The first screen's JavaScript is about 86 kB gzipped; `scripts/bench-load.mjs`
   compares builds if you are unsure what a change cost.
 
 ## Commits and pull requests

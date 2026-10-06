@@ -2,12 +2,12 @@
 Customer-facing endpoints: product browsing and barcode scan, the shopping list, checkout → digital receipts and
 loyalty points, offers, and recommendations computed from actual order history.
 """
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.clock import utcnow
 from app.database import get_db
 from app.models import CustomerOrder, CustomerOrderItem, Offer, Product, ShoppingListItem, Store, User
 from app.schemas import (
@@ -157,7 +157,7 @@ def list_receipts(db: Session = Depends(get_db), user: User = Depends(require_cu
 
 @router.get("/offers", response_model=list[OfferOut])
 def list_offers(db: Session = Depends(get_db), _: User = Depends(require_customer)):
-    now = datetime.utcnow()
+    now = utcnow()
     return (
         db.query(Offer)
         .filter(Offer.active == True)  # noqa: E712

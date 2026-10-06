@@ -15,6 +15,7 @@ import math
 import secrets
 from datetime import datetime, timedelta
 
+from app.clock import utcnow
 from app.database import Base, SessionLocal, engine
 from app.models import (
     AccessLevel,
@@ -105,7 +106,7 @@ def clear(db) -> None:
 
 
 def populate(db, now: datetime | None = None) -> None:
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     rng = Rng(20260401)
 
     def at(days: float = 0, hours: float = 0, minutes: float = 0) -> datetime:
