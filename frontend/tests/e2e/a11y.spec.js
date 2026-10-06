@@ -47,6 +47,18 @@ for (const scheme of ["light", "dark"]) {
       });
     }
 
+    test.describe("a screen that couldn't load", () => {
+      test.use({ allowedErrors: ["Failed to load resource", "net::ERR_FAILED", "dynamically imported module"] });
+
+      test("its message and reload button", async ({ page }) => {
+        await page.route(/\/assets\/Team-[^/]*\.js$/, (route) => route.abort());
+        await signInAs(page, "admin");
+        await page.goto("./#/team");
+        await expect(tid(page, "app.reload-screen")).toBeVisible();
+        await audit(page, "a screen that couldn't load");
+      });
+    });
+
     test("dialogs, forms and states that only appear after interaction", async ({ page }) => {
       test.slow(); // about 45 s on a fast laptop, because it trains every forecasting method in the page
       await signInAs(page, "admin");

@@ -64,6 +64,39 @@ test.describe("navigation", () => {
     await Promise.all([page.waitForEvent("load"), tid(page, "app.update-reload").click()]);
     await expect(heading(page, /Hi, Marcus/)).toBeVisible();
   });
+
+  test("opening a screen is immediate once its code has arrived", async ({ page }) => {
+    await signInAs(page, "admin");
+    // Every screen the role can open is fetched while the browser is idle after sign-in.
+    await page.waitForFunction(() => performance.getEntriesByType("resource").some((r) => /\/Team-[^/]*\.js$/.test(r.name)));
+    await page.waitForTimeout(300);
+    await tid(page, "nav.team").click();
+    // No loading placeholder in between: React 19 would hold one on screen for at least 300 ms.
+    await expect(heading(page, "Team & Access")).toBeVisible({ timeout: 250 });
+  });
+});
+
+test.describe("a screen that can't load", () => {
+  // A tab opened before a new version was published asks for an old copy of a screen, which is no longer there.
+  const TEAM_CHUNK = /\/assets\/Team-[^/]*\.js$/;
+  test.use({ allowedErrors: ["Failed to load resource", "net::ERR_FAILED", "dynamically imported module"] });
+
+  test("offers a reload instead of a blank page", async ({ page }) => {
+    await page.route(TEAM_CHUNK, (route) => route.abort());
+    await signInAs(page, "admin");
+    await tid(page, "nav.team").click();
+    await expect(heading(page, "This screen didn’t open")).toBeVisible();
+    await expect(page.getByRole("alert")).toContainText("may have been updated since this tab was opened");
+    // The rest of the app keeps working.
+    await tid(page, "nav.cashier").click();
+    await expect(heading(page, "Cashier")).toBeVisible();
+    await tid(page, "nav.team").click();
+    await expect(tid(page, "app.reload-screen")).toBeVisible();
+
+    await page.unroute(TEAM_CHUNK);
+    await Promise.all([page.waitForEvent("load"), tid(page, "app.reload-screen").click()]);
+    await expect(heading(page, "Team & Access")).toBeVisible();
+  });
 });
 
 test.describe("profile — admin", () => {
