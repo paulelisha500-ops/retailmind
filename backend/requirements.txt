@@ -13,4 +13,4 @@ scikit-learn>=1.5
 # LSTM and attention forecasting. On a machine without a GPU install the CPU build first, from the dedicated index
 # (the default PyPI wheel bundles CUDA binaries and is enormously larger than needed):
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
-torch>=2.4
+torch>=2.14.1
