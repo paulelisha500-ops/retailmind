@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
-    "@babel/parser": "^7.29.9",
+    "@babel/parser": "^8.0.6",
     "@babel/traverse": "^8.0.6",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
