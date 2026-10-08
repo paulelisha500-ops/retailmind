@@ -21,4 +21,4 @@ bcrypt<4.1
 
 # Sales history and the forecasting frames
 pandas>=3.0.6
-numpy>=1.26
+numpy>=2.5.3
